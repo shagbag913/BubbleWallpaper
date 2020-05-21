@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">Bubble Wall</string>
+    <string name="wallpaper_desc">Bubbles</string>
+    <string name="wallpaper_author">shagbag913</string>
+    <string-array name="wallpaper_bubble_colors">
+        <item>#ff6a36</item>
+        <item>#ff8e66</item>
+        <item>#306eff</item>
+        <item>#5e8eff</item>
+        <item>#fc4242</item>
+        <item>#ff5757</item>
+        <item>#f5d549</item>
+        <item>#ffe575</item>
+        <item>#4aabff</item>
+        <item>#6ebcff</item>
+        <item>#47ff6c</item>
+        <item>#6bff89</item>
+        <item>#5cffde</item>
+        <item>#7affe4</item>
+        <item>#ff4ffc</item>
+        <item>#ff75fd</item>
+    </string-array>
+</resources>
