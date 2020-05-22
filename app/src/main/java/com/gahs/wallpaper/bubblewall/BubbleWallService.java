@@ -10,6 +10,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Handler;
 import android.service.wallpaper.WallpaperService;
+import android.util.TypedValue;
 import android.view.SurfaceHolder;
 
 import java.util.ArrayList;
@@ -214,8 +215,18 @@ public class BubbleWallService extends WallpaperService {
             }
         }
 
+        private int getAccentColor() {
+            TypedValue outValue = new TypedValue();
+            getTheme().resolveAttribute(android.R.attr.colorAccent, outValue, true);
+            return outValue.data;
+        }
+
         private void drawCanvasBackground(Canvas canvas) {
-            canvas.drawColor(isNightMode() ? Color.BLACK : Color.argb(255, 215, 215, 215));
+            canvas.drawColor(isNightMode() ? Color.BLACK : Color.WHITE);
+
+            int accent = getAccentColor();
+            canvas.drawColor(Color.argb(75, Color.red(accent),
+                    Color.green(accent), Color.blue(accent)));
         }
     }
 
