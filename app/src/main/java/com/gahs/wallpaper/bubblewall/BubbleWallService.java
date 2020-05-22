@@ -24,6 +24,8 @@ public class BubbleWallService extends WallpaperService {
 
     private class BubbleWallEngine extends Engine {
         private static final int BUBBLE_PADDING = 50;
+        private static final int MAX_BUBBLE_RADIUS = 250;
+        private static final int MIN_BUBBLE_RADIUS = 10;
 
         private Runnable mExpansionRunnable = new Runnable() {
             @Override
@@ -47,6 +49,8 @@ public class BubbleWallService extends WallpaperService {
         private BroadcastReceiver mReceiver = new BubbleWallReceiver();
         private ArrayList<Bubble> mBubbles = new ArrayList<>();
         private int mUsedBubbleColors;
+        private int mSurfaceHeight;
+        private int mSurfaceWidth;
 
         private class BubbleWallReceiver extends BroadcastReceiver {
             @Override
@@ -89,14 +93,25 @@ public class BubbleWallService extends WallpaperService {
 
         @Override
         public void onSurfaceChanged(SurfaceHolder surfaceHolder, int format, int width, int height) {
+            mSurfaceHeight = height;
+            mSurfaceWidth = width;
             resetBubbles();
             mHandler.post(mMaximizeRunnable);
         }
 
         private void resetBubbles() {
             mBubbles.clear();
-            int numBubbles = getResources().getInteger(R.integer.number_bubbles);
-            for (int x = 0; x < numBubbles; ++x) {
+            int biggestBubbleArea = (int)(Math.PI * (MAX_BUBBLE_RADIUS * MAX_BUBBLE_RADIUS));
+            int smallestBubbleArea = (int)(Math.PI * (MIN_BUBBLE_RADIUS * MIN_BUBBLE_RADIUS));
+            int surfaceArea = mSurfaceHeight * mSurfaceWidth;
+
+            int numBigBubbles = surfaceArea / biggestBubbleArea;
+
+            int numSmallBubbles = (surfaceArea - biggestBubbleArea * numBigBubbles) /
+                    smallestBubbleArea;
+
+            int totalBubbles = (int)((numBigBubbles + numSmallBubbles) * .5);
+            for (int x = 0; x < totalBubbles; ++x) {
                 mBubbles.add(genRandomBubble());
             }
         }
@@ -110,7 +125,7 @@ public class BubbleWallService extends WallpaperService {
 
             int radius = 0, x = 0, y = 0;
             while (bubbleOverlaps(x, y, radius) || radius == 0) {
-                radius = Math.max(random.nextInt(250), 10);
+                radius = Math.max(random.nextInt(MAX_BUBBLE_RADIUS), MIN_BUBBLE_RADIUS);
                 x = Math.max(random.nextInt(displayWidth - radius - BUBBLE_PADDING),
                         radius + BUBBLE_PADDING);
                 y = Math.max(random.nextInt(displayHeight - radius - BUBBLE_PADDING),
