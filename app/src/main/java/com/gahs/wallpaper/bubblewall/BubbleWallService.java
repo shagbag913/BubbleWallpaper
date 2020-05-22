@@ -10,8 +10,6 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Handler;
 import android.service.wallpaper.WallpaperService;
-import android.util.Log;
-import android.view.OrientationEventListener;
 import android.view.SurfaceHolder;
 
 import java.util.ArrayList;
@@ -25,28 +23,30 @@ public class BubbleWallService extends WallpaperService {
     }
 
     private class BubbleWallEngine extends Engine {
-        BroadcastReceiver mReceiver = new BubbleWallReceiver();
-        Handler mHandler = new Handler();
-        Runnable mExpansionRunnable = new Runnable() {
+        private static final int BUBBLE_PADDING = 50;
+
+        private Runnable mExpansionRunnable = new Runnable() {
             @Override
             public void run() {
                 animateBubbleExpansion();
             }
         };
-        Runnable mMinimizeRunnable = new Runnable() {
+        private Runnable mMinimizeRunnable = new Runnable() {
             @Override
             public void run() {
                 minimizeBubbles();
             }
         };
-        Runnable mMaximizeRunnable = new Runnable() {
+        private Runnable mMaximizeRunnable = new Runnable() {
             @Override
             public void run() {
                 maximizeBubbles();
             }
         };
-        ArrayList<Bubble> mBubbles = new ArrayList<>();
-        int mUsedBubbleColors;
+        private Handler mHandler = new Handler();
+        private BroadcastReceiver mReceiver = new BubbleWallReceiver();
+        private ArrayList<Bubble> mBubbles = new ArrayList<>();
+        private int mUsedBubbleColors;
 
         private class BubbleWallReceiver extends BroadcastReceiver {
             @Override
@@ -73,8 +73,6 @@ public class BubbleWallService extends WallpaperService {
             if (!isPreview()) {
                 registerReceiver(mReceiver, intentFilter);
             }
-
-            resetBubbles();
         }
 
         @Override
@@ -110,17 +108,31 @@ public class BubbleWallService extends WallpaperService {
             int displayWidth = getResources().getDisplayMetrics().widthPixels;
             int displayHeight = getResources().getDisplayMetrics().heightPixels;
 
-            int radius = Math.max(random.nextInt(250), 10);
-            int x = Math.max(random.nextInt(displayWidth - radius), radius + 50);
-            int y = Math.max(random.nextInt(displayHeight - radius), radius + 50);
+            int radius = 0, x = 0, y = 0;
+            while (bubbleOverlaps(x, y, radius) || radius == 0) {
+                radius = Math.max(random.nextInt(250), 10);
+                x = Math.max(random.nextInt(displayWidth - radius - BUBBLE_PADDING),
+                        radius + BUBBLE_PADDING);
+                y = Math.max(random.nextInt(displayHeight - radius - BUBBLE_PADDING),
+                        radius + BUBBLE_PADDING);
+            }
 
             String[] colorArray = getResources().getStringArray(R.array.wallpaper_bubble_colors);
             if (mUsedBubbleColors + 1 >= colorArray.length) {
                 mUsedBubbleColors = 0;
             }
-            Log.i("BubbleWall", "mUsedBubbleColors: " + mUsedBubbleColors);
             return new Bubble(x, y, radius, getBubblePaints(colorArray[mUsedBubbleColors++],
                     colorArray[mUsedBubbleColors++]));
+        }
+
+        private boolean bubbleOverlaps(int x, int y, int radius) {
+            for (Bubble bubble : mBubbles) {
+                double distance = Math.sqrt(Math.pow(x - bubble.x, 2) + Math.pow(y - bubble.y, 2));
+                if (distance < radius + bubble.maxRadius + BUBBLE_PADDING) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private void animateBubbleExpansion() {
