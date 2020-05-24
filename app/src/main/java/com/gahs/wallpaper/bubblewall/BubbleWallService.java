@@ -225,7 +225,7 @@ public class BubbleWallService extends WallpaperService {
             canvas.drawColor(isNightMode() ? Color.BLACK : Color.WHITE);
 
             int accent = getAccentColor();
-            canvas.drawColor(Color.argb(75, Color.red(accent),
+            canvas.drawColor(Color.argb(isNightMode() ? 50 : 90, Color.red(accent),
                     Color.green(accent), Color.blue(accent)));
         }
     }
