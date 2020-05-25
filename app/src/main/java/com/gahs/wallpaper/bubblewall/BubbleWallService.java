@@ -46,21 +46,40 @@ public class BubbleWallService extends WallpaperService {
                 maximizeBubbles();
             }
         };
+        private Runnable mTransitionBgRunnable = new Runnable() {
+            @Override
+            public void run() {
+                transitionBackground();
+
+            }
+        };
+
         private Handler mHandler = new Handler();
         private BroadcastReceiver mReceiver = new BubbleWallReceiver();
         private ArrayList<Bubble> mBubbles = new ArrayList<>();
         private int mUsedBubbleColors;
         private int mSurfaceHeight;
         private int mSurfaceWidth;
+        private Boolean mDarkBg;
 
         private class BubbleWallReceiver extends BroadcastReceiver {
             @Override
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
-                if (action == "android.intent.action.USER_PRESENT") {
-                    mHandler.postDelayed(mExpansionRunnable, 250);
-                } else if (action == "android.intent.action.SCREEN_OFF") {
-                    mHandler.post(mMinimizeRunnable);
+                switch (action) {
+                    case "android.intent.action.USER_PRESENT":
+                        mHandler.postDelayed(mExpansionRunnable, 250);
+                        break;
+                    case "android.intent.action.SCREEN_OFF":
+                        mHandler.post(mMinimizeRunnable);
+                        break;
+                    case "android.intent.action.CONFIGURATION_CHANGED":
+                        boolean newNightModeDark = isNightMode();
+                        if (mDarkBg && !newNightModeDark || !mDarkBg && newNightModeDark) {
+                            mDarkBg = newNightModeDark;
+                            mHandler.post(mTransitionBgRunnable);
+                        }
+                        break;
                 }
             }
         }
@@ -75,6 +94,7 @@ public class BubbleWallService extends WallpaperService {
             IntentFilter intentFilter = new IntentFilter();
             intentFilter.addAction("android.intent.action.SCREEN_OFF");
             intentFilter.addAction("android.intent.action.USER_PRESENT");
+            intentFilter.addAction("android.intent.action.CONFIGURATION_CHANGED");
             if (!isPreview()) {
                 registerReceiver(mReceiver, intentFilter);
             }
@@ -88,14 +108,13 @@ public class BubbleWallService extends WallpaperService {
         }
 
         @Override
-        public void onSurfaceCreated(SurfaceHolder surfaceHolder) {
-            mHandler.postDelayed(mExpansionRunnable, 500);
-        }
-
-        @Override
         public void onSurfaceChanged(SurfaceHolder surfaceHolder, int format, int width, int height) {
             mSurfaceHeight = height;
             mSurfaceWidth = width;
+            if (mDarkBg == null) {
+                mDarkBg = isNightMode();
+            }
+
             resetBubbles();
             mHandler.post(mMaximizeRunnable);
         }
@@ -149,6 +168,25 @@ public class BubbleWallService extends WallpaperService {
                 }
             }
             return false;
+        }
+
+        private void transitionBackground() {
+            SurfaceHolder surfaceHolder = getSurfaceHolder();
+            for (float x = 0f; x < 1.05f; x += 0.05f) {
+                Canvas canvas = surfaceHolder.lockHardwareCanvas();
+                float brightness = Math.max(mDarkBg ? 1f - x : x, 0f);
+                drawCanvasBackground(canvas, brightness);
+                drawBubbles(canvas);
+                surfaceHolder.unlockCanvasAndPost(canvas);
+            }
+
+        }
+
+        private void drawBubbles(Canvas canvas) {
+            for (Bubble bubble : mBubbles) {
+                canvas.drawCircle(bubble.x, bubble.y, bubble.currentRadius, bubble.fill);
+                canvas.drawCircle(bubble.x, bubble.y, bubble.currentRadius, bubble.outline);
+            }
         }
 
         private void animateBubbleExpansion() {
@@ -221,12 +259,20 @@ public class BubbleWallService extends WallpaperService {
             return outValue.data;
         }
 
-        private void drawCanvasBackground(Canvas canvas) {
-            canvas.drawColor(isNightMode() ? Color.BLACK : Color.WHITE);
+        private void drawCanvasBackground(Canvas canvas, float brightness) {
+            int r = Math.round(255 * brightness);
+            int g = Math.round(255 * brightness);
+            int b = Math.round(255 * brightness);
+
+            canvas.drawARGB(255, r, g, b);
 
             int accent = getAccentColor();
-            canvas.drawColor(Color.argb(isNightMode() ? 50 : 90, Color.red(accent),
+            canvas.drawColor(Color.argb(mDarkBg ? 50 : 90, Color.red(accent),
                     Color.green(accent), Color.blue(accent)));
+        }
+
+        private void drawCanvasBackground(Canvas canvas) {
+            drawCanvasBackground(canvas, mDarkBg ? 0f : 1f);
         }
     }
 
