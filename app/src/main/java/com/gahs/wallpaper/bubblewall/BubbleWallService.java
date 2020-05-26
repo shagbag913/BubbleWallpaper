@@ -196,11 +196,8 @@ public class BubbleWallService extends WallpaperService {
             bubbleloop: while (true) {
                 Canvas canvas = surfaceHolder.lockHardwareCanvas();
                 drawCanvasBackground(canvas);
-                for (int x = 0; x < mBubbles.size(); ++x) {
-                    Bubble bubble = mBubbles.get(x);
-
+                for (Bubble bubble : mBubbles) {
                     float addToRadius = bubble.maxRadius * .25f;
-
                     float speedModifier = bubble.currentRadius / ((float)bubble.maxRadius / 2);
                     if (speedModifier > 1) {
                         speedModifier = 2 - speedModifier;
@@ -209,11 +206,9 @@ public class BubbleWallService extends WallpaperService {
                                 ((float)bubble.maxRadius / 2);
                     }
                     speedModifier = Math.max(speedModifier, .001f);
-
                     bubble.currentRadius += addToRadius * speedModifier;
-                    canvas.drawCircle(bubble.x, bubble.y, bubble.currentRadius, bubble.fill);
-                    canvas.drawCircle(bubble.x, bubble.y, bubble.currentRadius, bubble.outline);
                 }
+                drawBubbles(canvas);
                 surfaceHolder.unlockCanvasAndPost(canvas);
                 for (int x = 0; x < mBubbles.size(); ++x) {
                     Bubble bubble = mBubbles.get(x);
@@ -229,12 +224,10 @@ public class BubbleWallService extends WallpaperService {
             SurfaceHolder surfaceHolder = getSurfaceHolder();
             Canvas canvas = surfaceHolder.lockHardwareCanvas();
             drawCanvasBackground(canvas);
-            for (int x = 0; x < mBubbles.size(); ++x) {
-                Bubble bubble = mBubbles.get(x);
+            for (Bubble bubble : mBubbles) {
                 bubble.currentRadius = bubble.minimizedRadius;
-                canvas.drawCircle(bubble.x, bubble.y, bubble.currentRadius, bubble.fill);
-                canvas.drawCircle(bubble.x, bubble.y, bubble.currentRadius, bubble.outline);
             }
+            drawBubbles(canvas);
             surfaceHolder.unlockCanvasAndPost(canvas);
         }
 
@@ -243,12 +236,10 @@ public class BubbleWallService extends WallpaperService {
                 SurfaceHolder surfaceHolder = getSurfaceHolder();
                 Canvas canvas = surfaceHolder.lockHardwareCanvas();
                 drawCanvasBackground(canvas);
-                for (int x = 0; x < mBubbles.size(); ++x) {
-                    Bubble bubble = mBubbles.get(x);
+                for (Bubble bubble : mBubbles) {
                     bubble.currentRadius = bubble.maxRadius;
-                    canvas.drawCircle(bubble.x, bubble.y, bubble.currentRadius, bubble.fill);
-                    canvas.drawCircle(bubble.x, bubble.y, bubble.currentRadius, bubble.outline);
                 }
+                drawBubbles(canvas);
                 surfaceHolder.unlockCanvasAndPost(canvas);
             }
         }
