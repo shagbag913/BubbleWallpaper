@@ -10,7 +10,9 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Handler;
 import android.service.wallpaper.WallpaperService;
+import android.util.Log;
 import android.util.TypedValue;
+import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 
 import java.util.ArrayList;
@@ -53,6 +55,12 @@ public class BubbleWallService extends WallpaperService {
 
             }
         };
+        private Runnable mTouchRunnable = new Runnable() {
+            @Override
+            public void run() {
+                animateBubbleTouch();
+            }
+        };
 
         private Handler mHandler = new Handler();
         private BroadcastReceiver mReceiver = new BubbleWallReceiver();
@@ -61,6 +69,7 @@ public class BubbleWallService extends WallpaperService {
         private int mSurfaceHeight;
         private int mSurfaceWidth;
         private Boolean mDarkBg;
+        private Bubble mPressedBubble;
 
         private class BubbleWallReceiver extends BroadcastReceiver {
             @Override
@@ -89,7 +98,6 @@ public class BubbleWallService extends WallpaperService {
             super.onCreate(surfaceHolder);
 
             setOffsetNotificationsEnabled(false);
-            setTouchEventsEnabled(false);
 
             IntentFilter intentFilter = new IntentFilter();
             intentFilter.addAction("android.intent.action.SCREEN_OFF");
@@ -117,6 +125,43 @@ public class BubbleWallService extends WallpaperService {
 
             resetBubbles();
             mHandler.post(mMaximizeRunnable);
+        }
+
+        @Override
+        public void onTouchEvent(MotionEvent event) {
+            // Suppress rapid and non-down touch events
+            if (mHandler.hasCallbacks(mTouchRunnable) ||
+                    event.getAction() != MotionEvent.ACTION_DOWN) {
+                return;
+            }
+            int x = (int)Math.floor(event.getX());
+            int y = (int)Math.floor(event.getY());
+            mPressedBubble = getBubbleInBounds(x, y);
+            if (mPressedBubble != null) {
+                mHandler.post(mTouchRunnable);
+            }
+        }
+
+        private void animateBubbleTouch() {
+            SurfaceHolder surfaceHolder = getSurfaceHolder();
+            for (int x = 0; x < 20; x++) {
+                Canvas canvas = surfaceHolder.lockHardwareCanvas();
+                drawCanvasBackground(canvas);
+                mPressedBubble.currentRadius += x <= 10 ? -.25f : .25f;
+                drawBubbles(canvas);
+                surfaceHolder.unlockCanvasAndPost(canvas);
+            }
+            mPressedBubble = null;
+        }
+
+        private Bubble getBubbleInBounds(int x, int y) {
+            for (Bubble bubble : mBubbles) {
+                if (Math.pow(x - bubble.x, 2) + Math.pow(y - bubble.y, 2) <
+                        Math.pow(bubble.maxRadius, 2)) {
+                    return bubble;
+                }
+            }
+            return null;
         }
 
         private void resetBubbles() {
