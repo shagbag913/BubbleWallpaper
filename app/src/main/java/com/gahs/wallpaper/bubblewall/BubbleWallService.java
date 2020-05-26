@@ -28,7 +28,7 @@ public class BubbleWallService extends WallpaperService {
     private class BubbleWallEngine extends Engine {
         private static final int BUBBLE_PADDING = 50;
         private static final int MAX_BUBBLE_RADIUS = 250;
-        private static final int MIN_BUBBLE_RADIUS = 10;
+        private static final int MIN_BUBBLE_RADIUS = 20;
         private static final int MAX_OVERLAP_RETRY_COUNT = 50;
 
         private Runnable mExpansionRunnable = new Runnable() {
