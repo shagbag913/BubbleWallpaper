@@ -2,5 +2,5 @@
 <wallpaper xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/wallpaper_desc"
     android:author="@string/wallpaper_author"
-    android:thumbnail="@drawable/ic_launcher_background"
+    android:thumbnail="@drawable/preview"
     android:showMetadataInPreview="true" />

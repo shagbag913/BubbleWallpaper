@@ -1,6 +1,7 @@
 <resources>
-    <string name="app_name">Bubble Wall</string>
-    <string name="wallpaper_desc">Bubbles</string>
+    <string name="app_name">Bubble Live Wallpaper</string>
+    <string name="wallpaper_name">Bubbles</string>
+    <string name="wallpaper_desc">Bubbles with clicky and growy effects!</string>
     <string name="wallpaper_author">shagbag913</string>
     <string-array name="wallpaper_bubble_colors">
         <item>#4654bd</item>
