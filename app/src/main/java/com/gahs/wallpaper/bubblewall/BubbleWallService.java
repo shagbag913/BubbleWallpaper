@@ -29,6 +29,7 @@ public class BubbleWallService extends WallpaperService {
         private static final int BUBBLE_PADDING = 50;
         private static final int MAX_BUBBLE_RADIUS = 250;
         private static final int MIN_BUBBLE_RADIUS = 10;
+        private static final int MAX_OVERLAP_RETRY_COUNT = 50;
 
         private Runnable mExpansionRunnable = new Runnable() {
             @Override
@@ -179,18 +180,16 @@ public class BubbleWallService extends WallpaperService {
 
         private void resetBubbles() {
             mBubbles.clear();
-            int biggestBubbleArea = (int)(Math.PI * (MAX_BUBBLE_RADIUS * MAX_BUBBLE_RADIUS));
-            int smallestBubbleArea = (int)(Math.PI * (MIN_BUBBLE_RADIUS * MIN_BUBBLE_RADIUS));
-            int surfaceArea = mSurfaceHeight * mSurfaceWidth;
 
-            int numBigBubbles = surfaceArea / biggestBubbleArea;
-
-            int numSmallBubbles = (surfaceArea - biggestBubbleArea * numBigBubbles) /
-                    smallestBubbleArea;
-
-            int totalBubbles = (int)((numBigBubbles + numSmallBubbles) * .5);
-            for (int x = 0; x < totalBubbles; ++x) {
-                mBubbles.add(genRandomBubble());
+            while (true) {
+                Bubble bubble = genRandomBubble();
+                if (bubble != null) {
+                    mBubbles.add(bubble);
+                } else {
+                    // If bubble is null, the max overlap retry count was
+                    // exceeded, stop adding bubbles
+                    break;
+                }
             }
         }
 
@@ -202,12 +201,17 @@ public class BubbleWallService extends WallpaperService {
             int displayHeight = getResources().getDisplayMetrics().heightPixels;
 
             int radius = 0, x = 0, y = 0;
+            int overlapCount = 0;
             while (bubbleOverlaps(x, y, radius) || radius == 0) {
                 radius = Math.max(random.nextInt(MAX_BUBBLE_RADIUS), MIN_BUBBLE_RADIUS);
                 x = Math.max(random.nextInt(displayWidth - radius - BUBBLE_PADDING),
                         radius + BUBBLE_PADDING);
                 y = Math.max(random.nextInt(displayHeight - radius - BUBBLE_PADDING),
                         radius + BUBBLE_PADDING);
+                ++overlapCount;
+                if (overlapCount > MAX_OVERLAP_RETRY_COUNT) {
+                    return null;
+                }
             }
 
             String[] colorArray = getResources().getStringArray(R.array.wallpaper_bubble_colors);
