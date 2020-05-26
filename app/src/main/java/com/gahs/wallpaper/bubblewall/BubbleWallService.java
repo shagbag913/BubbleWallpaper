@@ -9,8 +9,8 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.service.wallpaper.WallpaperService;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
@@ -62,7 +62,8 @@ public class BubbleWallService extends WallpaperService {
             }
         };
 
-        private Handler mHandler = new Handler();
+        private HandlerThread mHandlerThread = new HandlerThread("BubbleHandlerThread");
+        private Handler mHandler;
         private BroadcastReceiver mReceiver = new BubbleWallReceiver();
         private ArrayList<Bubble> mBubbles = new ArrayList<>();
         private int mUsedBubbleColors;
@@ -70,6 +71,7 @@ public class BubbleWallService extends WallpaperService {
         private int mSurfaceWidth;
         private Boolean mDarkBg;
         private Bubble mPressedBubble;
+        private boolean mIsVisible;
 
         private class BubbleWallReceiver extends BroadcastReceiver {
             @Override
@@ -93,6 +95,11 @@ public class BubbleWallService extends WallpaperService {
             }
         }
 
+        BubbleWallEngine() {
+            mHandlerThread.start();
+            mHandler = new Handler(mHandlerThread.getLooper());
+        }
+
         @Override
         public void onCreate(SurfaceHolder surfaceHolder) {
             super.onCreate(surfaceHolder);
@@ -110,6 +117,7 @@ public class BubbleWallService extends WallpaperService {
 
         @Override
         public void onDestroy() {
+            mHandlerThread.quit();
             if (!isPreview()) {
                 unregisterReceiver(mReceiver);
             }
@@ -130,7 +138,7 @@ public class BubbleWallService extends WallpaperService {
         @Override
         public void onTouchEvent(MotionEvent event) {
             // Suppress rapid and non-down touch events
-            if (mHandler.hasCallbacks(mTouchRunnable) ||
+            if (mHandler.hasCallbacks(mTouchRunnable) || mPressedBubble != null ||
                     event.getAction() != MotionEvent.ACTION_DOWN) {
                 return;
             }
@@ -140,6 +148,11 @@ public class BubbleWallService extends WallpaperService {
             if (mPressedBubble != null) {
                 mHandler.post(mTouchRunnable);
             }
+        }
+
+        @Override
+        public void onVisibilityChanged(boolean visible) {
+            mIsVisible = visible;
         }
 
         private void animateBubbleTouch() {
@@ -219,12 +232,19 @@ public class BubbleWallService extends WallpaperService {
             SurfaceHolder surfaceHolder = getSurfaceHolder();
             for (float x = 0f; x < 1.05f; x += 0.05f) {
                 Canvas canvas = surfaceHolder.lockHardwareCanvas();
-                float brightness = Math.max(mDarkBg ? 1f - x : x, 0f);
+                float brightness;
+                if (mIsVisible) {
+                    brightness = Math.max(mDarkBg ? 1f - x : x, 0f);
+                } else {
+                    brightness = mDarkBg ? 0f : 1f;
+                }
                 drawCanvasBackground(canvas, brightness);
                 drawBubbles(canvas);
                 surfaceHolder.unlockCanvasAndPost(canvas);
+                if (!mIsVisible) {
+                    break;
+                }
             }
-
         }
 
         private void drawBubbles(Canvas canvas) {
@@ -238,7 +258,8 @@ public class BubbleWallService extends WallpaperService {
             SurfaceHolder surfaceHolder = getSurfaceHolder();
             boolean bubblesMinimized =
                     mBubbles.get(0).currentRadius == mBubbles.get(0).minimizedRadius;
-            bubbleloop: while (true) {
+            bubbleloop: while (!mHandler.hasCallbacks(mMaximizeRunnable) &&
+                    !mHandler.hasCallbacks(mMinimizeRunnable) && mIsVisible) {
                 Canvas canvas = surfaceHolder.lockHardwareCanvas();
                 drawCanvasBackground(canvas);
                 for (Bubble bubble : mBubbles) {
@@ -263,6 +284,9 @@ public class BubbleWallService extends WallpaperService {
                 }
                 break;
             }
+
+            // Make sure all bubbles are maximized if the loop breaks early
+            maximizeBubbles();
         }
 
         private void minimizeBubbles() {
