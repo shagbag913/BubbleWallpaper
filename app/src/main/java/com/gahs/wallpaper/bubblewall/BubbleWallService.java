@@ -71,8 +71,6 @@ public class BubbleWallService extends WallpaperService {
         private BroadcastReceiver mReceiver = new BubbleWallReceiver();
         private ArrayList<Bubble> mBubbles = new ArrayList<>();
         private int mUsedBubbleColors;
-        private int mSurfaceHeight;
-        private int mSurfaceWidth;
         private Boolean mDarkBg;
         private Bubble mPressedBubble;
         private boolean mIsVisible;
@@ -129,8 +127,6 @@ public class BubbleWallService extends WallpaperService {
 
         @Override
         public void onSurfaceChanged(SurfaceHolder surfaceHolder, int format, int width, int height) {
-            mSurfaceHeight = height;
-            mSurfaceWidth = width;
             if (mDarkBg == null) {
                 mDarkBg = isNightMode();
             }
