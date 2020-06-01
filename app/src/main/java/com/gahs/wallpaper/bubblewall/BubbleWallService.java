@@ -7,7 +7,10 @@ import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.Shader;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.service.wallpaper.WallpaperService;
@@ -253,8 +256,19 @@ public class BubbleWallService extends WallpaperService {
 
         private void drawBubbles(Canvas canvas) {
             for (Bubble bubble : mBubbles) {
+                int x1 = (int)(bubble.currentRadius * Math.cos(Math.PI*.75) + bubble.x);
+                int y1 = (int)(bubble.currentRadius * Math.sin(Math.PI*.75) + bubble.y);
+                int x2 = (int)(bubble.currentRadius * Math.cos(Math.PI*1.75) + bubble.x);
+                int y2 = (int)(bubble.currentRadius * Math.sin(Math.PI*1.75) + bubble.y);
+                drawTriangle(canvas, bubble, x2, y2, x1, y1,
+                        bubble.x +(int)bubble.currentRadius + 50,
+                        bubble.y + (int)bubble.currentRadius + 50);
+            }
+
+            for (Bubble bubble : mBubbles) {
                 canvas.drawCircle(bubble.x, bubble.y, bubble.currentRadius, bubble.fill);
-                canvas.drawCircle(bubble.x, bubble.y, bubble.currentRadius, bubble.outline);
+                canvas.drawCircle(bubble.x, bubble.y, Math.max(bubble.currentRadius - 15, 1),
+                        bubble.outline);
             }
         }
 
@@ -338,19 +352,40 @@ public class BubbleWallService extends WallpaperService {
         private void drawCanvasBackground(Canvas canvas) {
             drawCanvasBackground(canvas, mDarkBg ? 0f : 1f);
         }
-    }
 
-    Paint[] getBubblePaints(String outline, String fill) {
-        Paint fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        fillPaint.setColor(Color.parseColor(fill));
-        fillPaint.setStyle(Paint.Style.FILL);
+        Paint[] getBubblePaints(String outline, String fill) {
+            Paint fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            fillPaint.setColor(Color.parseColor(fill));
+            fillPaint.setStyle(Paint.Style.FILL);
 
-        Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        outlinePaint.setColor(Color.parseColor(outline));
-        outlinePaint.setStrokeWidth(30);
-        outlinePaint.setStyle(Paint.Style.STROKE);
+            Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            outlinePaint.setColor(Color.parseColor(outline));
+            outlinePaint.setStrokeWidth(30);
+            outlinePaint.setStyle(Paint.Style.STROKE);
 
-        return new Paint[] {fillPaint, outlinePaint};
+            return new Paint[]{fillPaint, outlinePaint};
+        }
+
+        private void drawTriangle(Canvas canvas, Bubble bubble, int x1, int y1, int x2, int y2,
+                                  int x3, int y3) {
+            Path path = new Path();
+
+            path.moveTo(x1, y1);
+            path.lineTo(x2, y2);
+            path.lineTo(x3, y3);
+            path.lineTo(x1, y1);
+            path.close();
+
+            int color = bubble.outline.getColor();
+            color = Color.argb(100, Color.red(color), Color.green(color), Color.blue(color));
+
+            Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            paint.setStyle(Paint.Style.FILL_AND_STROKE);
+            paint.setShader(new LinearGradient(x1, y1, x3, y3, color, Color.TRANSPARENT,
+                    Shader.TileMode.MIRROR));
+
+            canvas.drawPath(path, paint);
+        }
     }
 
     private class Bubble {
