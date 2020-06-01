@@ -33,6 +33,7 @@ public class BubbleWallService extends WallpaperService {
         private static final int MAX_BUBBLE_RADIUS = 250;
         private static final int MIN_BUBBLE_RADIUS = 20;
         private static final int MAX_OVERLAP_RETRY_COUNT = 50;
+        private static final int OUTLINE_SIZE = 30;
 
         private Runnable mExpansionRunnable = new Runnable() {
             @Override
@@ -256,15 +257,15 @@ public class BubbleWallService extends WallpaperService {
                 int y1 = (int)(bubble.currentRadius * Math.sin(Math.PI*.75) + bubble.y);
                 int x2 = (int)(bubble.currentRadius * Math.cos(Math.PI*1.75) + bubble.x);
                 int y2 = (int)(bubble.currentRadius * Math.sin(Math.PI*1.75) + bubble.y);
-                drawTriangle(canvas, bubble, x2, y2, x1, y1,
-                        bubble.x +(int)bubble.currentRadius + 50,
+                drawBubbleShadow(canvas, bubble, x1, y1, x2, y2,
+                        bubble.x + (int)bubble.currentRadius + 50,
                         bubble.y + (int)bubble.currentRadius + 50);
             }
 
             for (Bubble bubble : mBubbles) {
                 canvas.drawCircle(bubble.x, bubble.y, bubble.currentRadius, bubble.fill);
-                canvas.drawCircle(bubble.x, bubble.y, Math.max(bubble.currentRadius - 15, 1),
-                        bubble.outline);
+                canvas.drawCircle(bubble.x, bubble.y,
+                        Math.max(bubble.currentRadius - OUTLINE_SIZE / 2, 1), bubble.outline);
             }
         }
 
@@ -362,7 +363,7 @@ public class BubbleWallService extends WallpaperService {
             return new Paint[]{fillPaint, outlinePaint};
         }
 
-        private void drawTriangle(Canvas canvas, Bubble bubble, int x1, int y1, int x2, int y2,
+        private void drawBubbleShadow(Canvas canvas, Bubble bubble, int x1, int y1, int x2, int y2,
                                   int x3, int y3) {
             Path path = new Path();
 
@@ -373,12 +374,12 @@ public class BubbleWallService extends WallpaperService {
             path.close();
 
             int color = bubble.outline.getColor();
-            color = Color.argb(100, Color.red(color), Color.green(color), Color.blue(color));
+            color = Color.argb(120, Color.red(color), Color.green(color), Color.blue(color));
 
             Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
             paint.setStyle(Paint.Style.FILL_AND_STROKE);
-            paint.setShader(new LinearGradient(x1, y1, x3, y3, color, Color.TRANSPARENT,
-                    Shader.TileMode.MIRROR));
+            paint.setShader(new LinearGradient((x1 + x2) / 2, (y1 + y2) / 2, x3, y3, color,
+                    Color.TRANSPARENT, Shader.TileMode.MIRROR));
 
             canvas.drawPath(path, paint);
         }
