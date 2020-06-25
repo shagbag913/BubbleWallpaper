@@ -35,35 +35,39 @@ public class BubbleWallService extends WallpaperService {
         private static final int MAX_OVERLAP_RETRY_COUNT = 50;
         private static final int OUTLINE_SIZE = 30;
 
-        private Runnable mExpansionRunnable = new Runnable() {
+        private BubbleMinToMaxDrawer mBubblesMinToMax = new BubbleMinToMaxDrawer();
+        private BubbleTouchDrawer mBubbleTouch = new BubbleTouchDrawer();
+        private UIModeTransitioner mUIModeTransitioner = new UIModeTransitioner();
+
+        private Runnable mBubblesMinToMaxRunnable = new Runnable() {
             @Override
             public void run() {
-                animateBubbleExpansion();
+                mBubblesMinToMax.draw();
             }
         };
-        private Runnable mMinimizeRunnable = new Runnable() {
+        private Runnable mMinimizeBubblesRunnable = new Runnable() {
             @Override
             public void run() {
                 minimizeBubbles();
             }
         };
-        private Runnable mMaximizeRunnable = new Runnable() {
+        private Runnable mMaximizeBubblesRunnable = new Runnable() {
             @Override
             public void run() {
                 maximizeBubbles();
             }
         };
-        private Runnable mTransitionBgRunnable = new Runnable() {
+        private Runnable mUIModeTransitionRunnable = new Runnable() {
             @Override
             public void run() {
-                transitionBackground();
+                mUIModeTransitioner.draw();
 
             }
         };
-        private Runnable mTouchRunnable = new Runnable() {
+        private Runnable mBubbleTouchRunnable = new Runnable() {
             @Override
             public void run() {
-                animateBubbleTouch();
+                mBubbleTouch.draw();
             }
         };
 
@@ -74,7 +78,6 @@ public class BubbleWallService extends WallpaperService {
         private int mUsedBubbleColors;
         private Boolean mDarkBg;
         private Bubble mPressedBubble;
-        private boolean mIsVisible;
 
         private class BubbleWallReceiver extends BroadcastReceiver {
             @Override
@@ -82,16 +85,16 @@ public class BubbleWallService extends WallpaperService {
                 String action = intent.getAction();
                 switch (action) {
                     case "android.intent.action.USER_PRESENT":
-                        mHandler.postDelayed(mExpansionRunnable, 250);
+                        mHandler.postDelayed(mBubblesMinToMaxRunnable, 250);
                         break;
                     case "android.intent.action.SCREEN_OFF":
-                        mHandler.post(mMinimizeRunnable);
+                        mHandler.post(mMinimizeBubblesRunnable);
                         break;
                     case "android.intent.action.CONFIGURATION_CHANGED":
                         boolean newNightModeDark = isNightMode();
                         if (mDarkBg && !newNightModeDark || !mDarkBg && newNightModeDark) {
                             mDarkBg = newNightModeDark;
-                            mHandler.post(mTransitionBgRunnable);
+                            mHandler.post(mUIModeTransitionRunnable);
                         }
                         break;
                 }
@@ -127,19 +130,21 @@ public class BubbleWallService extends WallpaperService {
         }
 
         @Override
-        public void onSurfaceChanged(SurfaceHolder surfaceHolder, int format, int width, int height) {
+        public void onSurfaceChanged(SurfaceHolder surfaceHolder, int format, int width,
+                                     int height) {
             if (mDarkBg == null) {
                 mDarkBg = isNightMode();
             }
 
+            skipAllDrawers();
             resetBubbles();
-            mHandler.post(mMaximizeRunnable);
+            mHandler.post(mMaximizeBubblesRunnable);
         }
 
         @Override
         public void onTouchEvent(MotionEvent event) {
             // Suppress rapid and non-down touch events
-            if (mHandler.hasCallbacks(mTouchRunnable) || mPressedBubble != null ||
+            if (mHandler.hasCallbacks(mBubbleTouchRunnable) || mPressedBubble != null ||
                     event.getAction() != MotionEvent.ACTION_DOWN) {
                 return;
             }
@@ -147,25 +152,115 @@ public class BubbleWallService extends WallpaperService {
             int y = (int)Math.floor(event.getY());
             mPressedBubble = getBubbleInBounds(x, y);
             if (mPressedBubble != null) {
-                mHandler.post(mTouchRunnable);
+                mHandler.post(mBubbleTouchRunnable);
             }
         }
 
         @Override
         public void onVisibilityChanged(boolean visible) {
-            mIsVisible = visible;
+            if (!visible) {
+                skipAllDrawers();
+            }
         }
 
-        private void animateBubbleTouch() {
-            SurfaceHolder surfaceHolder = getSurfaceHolder();
-            for (int x = 0; x < 20; x++) {
+        private class BubbleTouchDrawer extends AnimationDrawer {
+            @Override
+            public void drawLoop() {
+                SurfaceHolder surfaceHolder = getSurfaceHolder();
+                for (int x = 0; x < 20; x++) {
+                    Canvas canvas = surfaceHolder.lockHardwareCanvas();
+                    drawCanvasBackground(canvas);
+                    mPressedBubble.currentRadius += x <= 10 ? -.25f : .25f;
+                    drawBubbles(canvas);
+                    surfaceHolder.unlockCanvasAndPost(canvas);
+                    if (stopDrawing) {
+                        break;
+                    }
+                }
+                mPressedBubble = null;
+            }
+
+            @Override
+            public void skipDrawing() {
+                super.skipDrawing();
+                // return all bubbles to normal state
+                maximizeBubbles();
+            }
+        }
+
+        private class BubbleMinToMaxDrawer extends AnimationDrawer {
+            @Override
+            public void drawLoop() {
+                SurfaceHolder surfaceHolder = getSurfaceHolder();
+                boolean bubblesMinimized =
+                        mBubbles.get(0).currentRadius == mBubbles.get(0).minimizedRadius;
+                bubbleloop: while (!stopDrawing) {
+                    Canvas canvas = surfaceHolder.lockHardwareCanvas();
+                    drawCanvasBackground(canvas);
+                    for (Bubble bubble : mBubbles) {
+                        float addToRadius = bubble.maxRadius * .25f;
+                        float speedModifier = bubble.currentRadius / ((float)bubble.maxRadius / 2);
+                        if (speedModifier > 1) {
+                            speedModifier = 2 - speedModifier;
+                        } else if (bubble.currentRadius >= bubble.minimizedRadius && bubblesMinimized) {
+                            speedModifier = (bubble.currentRadius - bubble.minimizedRadius) /
+                                    ((float)bubble.maxRadius / 2);
+                        }
+                        speedModifier = Math.max(speedModifier, .001f);
+                        bubble.currentRadius += addToRadius * speedModifier;
+                        bubble.currentRadius = Math.min(bubble.currentRadius,
+                                bubble.maxRadius);
+                    }
+                    drawBubbles(canvas);
+                    surfaceHolder.unlockCanvasAndPost(canvas);
+                    for (int x = 0; x < mBubbles.size(); ++x) {
+                        Bubble bubble = mBubbles.get(x);
+                        if (bubble.currentRadius < bubble.maxRadius) {
+                            continue bubbleloop;
+                        }
+                    }
+                    break;
+                }
+            }
+
+            @Override
+            public void skipDrawing() {
+                super.skipDrawing();
+                maximizeBubbles();
+            }
+        }
+
+        private class UIModeTransitioner extends AnimationDrawer {
+            @Override
+            public void drawLoop() {
+                SurfaceHolder surfaceHolder = getSurfaceHolder();
+                for (float x = 0f; x < 1.05f; x += 0.05f) {
+                    Canvas canvas = surfaceHolder.lockHardwareCanvas();
+                    float brightness = Math.max(mDarkBg ? 1f - x : x, 0f);
+                    drawCanvasBackground(canvas, brightness);
+                    drawBubbles(canvas);
+                    surfaceHolder.unlockCanvasAndPost(canvas);
+                    if (stopDrawing) {
+                        break;
+                    }
+                }
+            }
+
+            @Override
+            public void skipDrawing() {
+                super.skipDrawing();
+                SurfaceHolder surfaceHolder = getSurfaceHolder();
                 Canvas canvas = surfaceHolder.lockHardwareCanvas();
-                drawCanvasBackground(canvas);
-                mPressedBubble.currentRadius += x <= 10 ? -.25f : .25f;
+                drawCanvasBackground(canvas, mDarkBg ? 0f : 1f);
                 drawBubbles(canvas);
                 surfaceHolder.unlockCanvasAndPost(canvas);
             }
-            mPressedBubble = null;
+        }
+
+        private void skipAllDrawers() {
+            mBubblesMinToMax.skipDrawing();
+            mBubbleTouch.skipDrawing();
+            mUIModeTransitioner.skipDrawing();
         }
 
         private Bubble getBubbleInBounds(int x, int y) {
@@ -232,25 +327,6 @@ public class BubbleWallService extends WallpaperService {
             return false;
         }
 
-        private void transitionBackground() {
-            SurfaceHolder surfaceHolder = getSurfaceHolder();
-            for (float x = 0f; x < 1.05f; x += 0.05f) {
-                Canvas canvas = surfaceHolder.lockHardwareCanvas();
-                float brightness;
-                if (mIsVisible) {
-                    brightness = Math.max(mDarkBg ? 1f - x : x, 0f);
-                } else {
-                    brightness = mDarkBg ? 0f : 1f;
-                }
-                drawCanvasBackground(canvas, brightness);
-                drawBubbles(canvas);
-                surfaceHolder.unlockCanvasAndPost(canvas);
-                if (!mIsVisible) {
-                    break;
-                }
-            }
-        }
-
         private void drawBubbles(Canvas canvas) {
             for (Bubble bubble : mBubbles) {
                 int x1 = (int)(bubble.currentRadius * Math.cos(Math.PI*.75) + bubble.x);
@@ -267,41 +343,6 @@ public class BubbleWallService extends WallpaperService {
                 canvas.drawCircle(bubble.x, bubble.y,
                         Math.max(bubble.currentRadius - OUTLINE_SIZE / 2, 1), bubble.outline);
             }
-        }
-
-        private void animateBubbleExpansion() {
-            SurfaceHolder surfaceHolder = getSurfaceHolder();
-            boolean bubblesMinimized =
-                    mBubbles.get(0).currentRadius == mBubbles.get(0).minimizedRadius;
-            bubbleloop: while (!mHandler.hasCallbacks(mMaximizeRunnable) &&
-                    !mHandler.hasCallbacks(mMinimizeRunnable) && mIsVisible) {
-                Canvas canvas = surfaceHolder.lockHardwareCanvas();
-                drawCanvasBackground(canvas);
-                for (Bubble bubble : mBubbles) {
-                    float addToRadius = bubble.maxRadius * .25f;
-                    float speedModifier = bubble.currentRadius / ((float)bubble.maxRadius / 2);
-                    if (speedModifier > 1) {
-                        speedModifier = 2 - speedModifier;
-                    } else if (bubble.currentRadius >= bubble.minimizedRadius && bubblesMinimized) {
-                        speedModifier = (bubble.currentRadius - bubble.minimizedRadius) /
-                                ((float)bubble.maxRadius / 2);
-                    }
-                    speedModifier = Math.max(speedModifier, .001f);
-                    bubble.currentRadius += addToRadius * speedModifier;
-                }
-                drawBubbles(canvas);
-                surfaceHolder.unlockCanvasAndPost(canvas);
-                for (int x = 0; x < mBubbles.size(); ++x) {
-                    Bubble bubble = mBubbles.get(x);
-                    if (bubble.currentRadius < bubble.maxRadius) {
-                        continue bubbleloop;
-                    }
-                }
-                break;
-            }
-
-            // Make sure all bubbles are maximized if the loop breaks early
-            maximizeBubbles();
         }
 
         private void minimizeBubbles() {
@@ -385,6 +426,39 @@ public class BubbleWallService extends WallpaperService {
         }
     }
 
+    private class AnimationDrawer {
+        public boolean stopDrawing;
+        private boolean drawing;
+
+        public void drawLoop() {
+        }
+
+        public boolean isDrawing() {
+            return drawing;
+        }
+
+        public void draw() {
+            drawing = true;
+            drawLoop();
+            drawing = false;
+        }
+
+        public void skipDrawing() {
+            if (!isDrawing()) {
+                return;
+            }
+            stopDrawing = true;
+            // Wait for drawing to finish
+            while (drawing) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                }
+            }
+            stopDrawing = false;
+            // Final outcome to be drawn here in child class
+        }
+    }
     private class Bubble {
         int x;
         int y;
