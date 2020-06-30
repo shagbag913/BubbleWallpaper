@@ -138,7 +138,7 @@ public class BubbleWallService extends WallpaperService {
             }
 
             skipAllDrawers();
-            resetBubbles();
+            regenBubbles();
             mHandler.post(mMaximizeBubblesRunnable);
         }
 
@@ -154,13 +154,6 @@ public class BubbleWallService extends WallpaperService {
             mPressedBubble = getBubbleInBounds(x, y);
             if (mPressedBubble != null) {
                 mHandler.post(mBubbleTouchRunnable);
-            }
-        }
-
-        @Override
-        public void onVisibilityChanged(boolean visible) {
-            if (!visible) {
-                skipAllDrawers();
             }
         }
 
@@ -274,7 +267,7 @@ public class BubbleWallService extends WallpaperService {
             return null;
         }
 
-        private void resetBubbles() {
+        private void regenBubbles() {
             mBubbles.clear();
 
             while (true) {
