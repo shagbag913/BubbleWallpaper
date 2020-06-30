@@ -170,7 +170,7 @@ public class BubbleWallService extends WallpaperService {
                 for (int x = 0; x < 20; x++) {
                     Canvas canvas = surfaceHolder.lockHardwareCanvas();
                     drawCanvasBackground(canvas);
-                    mPressedBubble.currentRadius += x <= 10 ? -.25f : .25f;
+                    mPressedBubble.currentRadius += x <= 10 ? .5f : -.5f;
                     drawBubbles(canvas);
                     surfaceHolder.unlockCanvasAndPost(canvas);
                     if (stopDrawing) {
@@ -459,6 +459,7 @@ public class BubbleWallService extends WallpaperService {
             // Final outcome to be drawn here in child class
         }
     }
+
     private class Bubble {
         int x;
         int y;
