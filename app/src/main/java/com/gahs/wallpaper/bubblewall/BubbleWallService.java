@@ -48,13 +48,13 @@ public class BubbleWallService extends WallpaperService {
         private Runnable mMinimizeBubblesRunnable = new Runnable() {
             @Override
             public void run() {
-                minimizeBubbles();
+                drawMinimizedBubbles();
             }
         };
         private Runnable mMaximizeBubblesRunnable = new Runnable() {
             @Override
             public void run() {
-                maximizeBubbles();
+                drawMaximizedBubbles();
             }
         };
         private Runnable mUIModeTransitionRunnable = new Runnable() {
@@ -138,7 +138,7 @@ public class BubbleWallService extends WallpaperService {
             }
 
             skipAllDrawers();
-            regenBubbles();
+            regenAllBubbles();
             mHandler.post(mMaximizeBubblesRunnable);
         }
 
@@ -149,6 +149,7 @@ public class BubbleWallService extends WallpaperService {
                     event.getAction() != MotionEvent.ACTION_DOWN) {
                 return;
             }
+
             int x = (int)Math.floor(event.getX());
             int y = (int)Math.floor(event.getY());
             mPressedBubble = getBubbleInBounds(x, y);
@@ -157,7 +158,7 @@ public class BubbleWallService extends WallpaperService {
             }
         }
 
-        private class BubbleTouchDrawer extends AnimationDrawer {
+        private class BubbleTouchDrawer extends LongAnimationDrawer {
             @Override
             public void drawLoop() {
                 SurfaceHolder surfaceHolder = getSurfaceHolder();
@@ -178,11 +179,11 @@ public class BubbleWallService extends WallpaperService {
             public void skipDrawing() {
                 super.skipDrawing();
                 // return all bubbles to normal state
-                maximizeBubbles();
+                drawMaximizedBubbles();
             }
         }
 
-        private class BubbleMinToMaxDrawer extends AnimationDrawer {
+        private class BubbleMinToMaxDrawer extends LongAnimationDrawer {
             @Override
             public void drawLoop() {
                 SurfaceHolder surfaceHolder = getSurfaceHolder();
@@ -220,11 +221,11 @@ public class BubbleWallService extends WallpaperService {
             @Override
             public void skipDrawing() {
                 super.skipDrawing();
-                maximizeBubbles();
+                drawMaximizedBubbles();
             }
         }
 
-        private class UIModeTransitioner extends AnimationDrawer {
+        private class UIModeTransitioner extends LongAnimationDrawer {
             @Override
             public void drawLoop() {
                 SurfaceHolder surfaceHolder = getSurfaceHolder();
@@ -267,7 +268,7 @@ public class BubbleWallService extends WallpaperService {
             return null;
         }
 
-        private void regenBubbles() {
+        private void regenAllBubbles() {
             mBubbles.clear();
 
             while (true) {
@@ -340,7 +341,7 @@ public class BubbleWallService extends WallpaperService {
             }
         }
 
-        private void minimizeBubbles() {
+        private void drawMinimizedBubbles() {
             SurfaceHolder surfaceHolder = getSurfaceHolder();
             Canvas canvas = surfaceHolder.lockHardwareCanvas();
             drawCanvasBackground(canvas);
@@ -351,7 +352,7 @@ public class BubbleWallService extends WallpaperService {
             surfaceHolder.unlockCanvasAndPost(canvas);
         }
 
-        private void maximizeBubbles() {
+        private void drawMaximizedBubbles() {
             for (int y = 0; y < 2; ++y) {
                 SurfaceHolder surfaceHolder = getSurfaceHolder();
                 Canvas canvas = surfaceHolder.lockHardwareCanvas();
@@ -421,7 +422,7 @@ public class BubbleWallService extends WallpaperService {
         }
     }
 
-    private static class AnimationDrawer {
+    private static class LongAnimationDrawer {
         public boolean stopDrawing;
         private boolean drawing;
 
