@@ -83,6 +83,7 @@ public class BubbleWallService extends WallpaperService {
             @Override
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
+                if (action == null) return;
                 switch (action) {
                     case "android.intent.action.USER_PRESENT":
                         mHandler.postDelayed(mBubblesMinToMaxRunnable, 250);
@@ -341,7 +342,8 @@ public class BubbleWallService extends WallpaperService {
             for (Bubble bubble : mBubbles) {
                 canvas.drawCircle(bubble.x, bubble.y, bubble.currentRadius, bubble.fill);
                 canvas.drawCircle(bubble.x, bubble.y,
-                        Math.max(bubble.currentRadius - OUTLINE_SIZE / 2, 1), bubble.outline);
+                        Math.max(bubble.currentRadius - (float)OUTLINE_SIZE / 2, 1),
+                        bubble.outline);
             }
         }
 
@@ -419,14 +421,14 @@ public class BubbleWallService extends WallpaperService {
 
             Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
             paint.setStyle(Paint.Style.FILL_AND_STROKE);
-            paint.setShader(new LinearGradient((x1 + x2) / 2, (y1 + y2) / 2, x3, y3, color,
-                    Color.TRANSPARENT, Shader.TileMode.MIRROR));
+            paint.setShader(new LinearGradient((float)(x1 + x2) / 2, (float)(y1 + y2) / 2, x3, y3,
+                    color, Color.TRANSPARENT, Shader.TileMode.MIRROR));
 
             canvas.drawPath(path, paint);
         }
     }
 
-    private class AnimationDrawer {
+    private static class AnimationDrawer {
         public boolean stopDrawing;
         private boolean drawing;
 
@@ -453,6 +455,7 @@ public class BubbleWallService extends WallpaperService {
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
+                    // None of these threads are ever interrupted
                 }
             }
             stopDrawing = false;
@@ -460,7 +463,7 @@ public class BubbleWallService extends WallpaperService {
         }
     }
 
-    private class Bubble {
+    private static class Bubble {
         int x;
         int y;
         int maxRadius;
