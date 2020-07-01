@@ -37,7 +37,8 @@ public class BubbleWallService extends WallpaperService {
         private static final int OUTLINE_SIZE = 30;
 
         private BubbleMinToMaxDrawer mBubblesMinToMax = new BubbleMinToMaxDrawer();
-        private BubbleTouchDrawer mBubbleTouch = new BubbleTouchDrawer();
+        private BubbleTouchDrawer mBubbleTouch = new BubbleTouchDrawer(true);
+        private BubbleTouchDrawer mBubbleTouch2 = new BubbleTouchDrawer(false);
         private UIModeTransitioner mUIModeTransitioner = new UIModeTransitioner();
 
         private Runnable mBubblesMinToMaxRunnable = new Runnable() {
@@ -71,6 +72,12 @@ public class BubbleWallService extends WallpaperService {
                 mBubbleTouch.draw();
             }
         };
+        private Runnable mBubbleTouchRunnable2 = new Runnable() {
+            @Override
+            public void run() {
+                mBubbleTouch2.draw();
+            }
+        };
 
         private HandlerThread mHandlerThread = new HandlerThread("BubbleHandlerThread");
         private Handler mHandler;
@@ -79,6 +86,7 @@ public class BubbleWallService extends WallpaperService {
         private int mUsedBubbleColors;
         private Boolean mDarkBg;
         private Bubble mPressedBubble;
+        private boolean mDrawingTouchEvent;
 
         private class BubbleWallReceiver extends BroadcastReceiver {
             @Override
@@ -147,34 +155,48 @@ public class BubbleWallService extends WallpaperService {
 
         @Override
         public void onTouchEvent(MotionEvent event) {
-            // Suppress rapid and non-down touch events
-            if (mPressedBubble != null || event.getAction() != MotionEvent.ACTION_DOWN) {
+            // Ignore unwanted touch events
+            if (event.getAction() != MotionEvent.ACTION_UP &&
+                    event.getAction() != MotionEvent.ACTION_DOWN || mDrawingTouchEvent) {
                 return;
             }
 
-            int x = (int)Math.floor(event.getX());
-            int y = (int)Math.floor(event.getY());
-            mPressedBubble = getBubbleInBounds(x, y);
-            if (mPressedBubble != null) {
-                mHandler.post(mBubbleTouchRunnable);
+            if (event.getAction() != MotionEvent.ACTION_UP) {
+                mPressedBubble = getBubbleFromTouchEvent(event);
+                if (mPressedBubble != null) {
+                    mHandler.post(mBubbleTouchRunnable);
+                }
+            } else if (mPressedBubble != null) {
+                mHandler.post(mBubbleTouchRunnable2);
             }
         }
 
         private class BubbleTouchDrawer extends LongAnimationDrawer {
+            boolean expand;
+
+            BubbleTouchDrawer(boolean expand) {
+                this.expand = expand;
+            }
+
             @Override
             public void drawLoop() {
+                mDrawingTouchEvent = true;
                 SurfaceHolder surfaceHolder = getSurfaceHolder();
-                for (int x = 0; x < 20; x++) {
+                for (int x = 0; x < 10; x++) {
                     Canvas canvas = lockHwCanvasIfPossible(surfaceHolder);
                     drawCanvasBackground(canvas);
-                    mPressedBubble.currentRadius += x <= 10 ? .5f : -.5f;
+                    mPressedBubble.currentRadius += expand ? .5f : -.5f;
                     drawBubbles(canvas);
                     surfaceHolder.unlockCanvasAndPost(canvas);
                     if (stopDrawing) {
                         break;
                     }
                 }
-                mPressedBubble = null;
+
+                if (!expand) {
+                    mPressedBubble = null;
+                }
+                mDrawingTouchEvent = false;
             }
 
             @Override
@@ -268,6 +290,12 @@ public class BubbleWallService extends WallpaperService {
                 }
             }
             return null;
+        }
+
+        private Bubble getBubbleFromTouchEvent(MotionEvent event) {
+            int x = (int)event.getX();
+            int y = (int)event.getY();
+            return getBubbleInBounds(x, y);
         }
 
         private void regenAllBubbles() {
