@@ -11,6 +11,7 @@ import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Shader;
+import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.service.wallpaper.WallpaperService;
@@ -111,7 +112,9 @@ public class BubbleWallService extends WallpaperService {
         public void onCreate(SurfaceHolder surfaceHolder) {
             super.onCreate(surfaceHolder);
 
-            setOffsetNotificationsEnabled(false);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1) {
+                setOffsetNotificationsEnabled(false);
+            }
 
             IntentFilter intentFilter = new IntentFilter();
             intentFilter.addAction("android.intent.action.SCREEN_OFF");
@@ -145,8 +148,7 @@ public class BubbleWallService extends WallpaperService {
         @Override
         public void onTouchEvent(MotionEvent event) {
             // Suppress rapid and non-down touch events
-            if (mHandler.hasCallbacks(mBubbleTouchRunnable) || mPressedBubble != null ||
-                    event.getAction() != MotionEvent.ACTION_DOWN) {
+            if (mPressedBubble != null || event.getAction() != MotionEvent.ACTION_DOWN) {
                 return;
             }
 
@@ -163,7 +165,7 @@ public class BubbleWallService extends WallpaperService {
             public void drawLoop() {
                 SurfaceHolder surfaceHolder = getSurfaceHolder();
                 for (int x = 0; x < 20; x++) {
-                    Canvas canvas = surfaceHolder.lockHardwareCanvas();
+                    Canvas canvas = lockHwCanvasIfPossible(surfaceHolder);
                     drawCanvasBackground(canvas);
                     mPressedBubble.currentRadius += x <= 10 ? .5f : -.5f;
                     drawBubbles(canvas);
@@ -190,7 +192,7 @@ public class BubbleWallService extends WallpaperService {
                 boolean bubblesMinimized =
                         mBubbles.get(0).currentRadius == mBubbles.get(0).minimizedRadius;
                 bubbleloop: while (!stopDrawing) {
-                    Canvas canvas = surfaceHolder.lockHardwareCanvas();
+                    Canvas canvas = lockHwCanvasIfPossible(surfaceHolder);
                     drawCanvasBackground(canvas);
                     for (Bubble bubble : mBubbles) {
                         float addToRadius = bubble.maxRadius * .25f;
@@ -230,7 +232,7 @@ public class BubbleWallService extends WallpaperService {
             public void drawLoop() {
                 SurfaceHolder surfaceHolder = getSurfaceHolder();
                 for (float x = 0f; x < 1.05f; x += 0.05f) {
-                    Canvas canvas = surfaceHolder.lockHardwareCanvas();
+                    Canvas canvas = lockHwCanvasIfPossible(surfaceHolder);
                     float brightness = Math.max(mDarkBg ? 1f - x : x, 0f);
                     drawCanvasBackground(canvas, brightness);
                     drawBubbles(canvas);
@@ -245,7 +247,7 @@ public class BubbleWallService extends WallpaperService {
             public void skipDrawing() {
                 super.skipDrawing();
                 SurfaceHolder surfaceHolder = getSurfaceHolder();
-                Canvas canvas = surfaceHolder.lockHardwareCanvas();
+                Canvas canvas = lockHwCanvasIfPossible(surfaceHolder);
                 drawCanvasBackground(canvas, mDarkBg ? 0f : 1f);
                 drawBubbles(canvas);
                 surfaceHolder.unlockCanvasAndPost(canvas);
@@ -343,7 +345,7 @@ public class BubbleWallService extends WallpaperService {
 
         private void drawMinimizedBubbles() {
             SurfaceHolder surfaceHolder = getSurfaceHolder();
-            Canvas canvas = surfaceHolder.lockHardwareCanvas();
+            Canvas canvas = lockHwCanvasIfPossible(surfaceHolder);
             drawCanvasBackground(canvas);
             for (Bubble bubble : mBubbles) {
                 bubble.currentRadius = bubble.minimizedRadius;
@@ -355,7 +357,7 @@ public class BubbleWallService extends WallpaperService {
         private void drawMaximizedBubbles() {
             for (int y = 0; y < 2; ++y) {
                 SurfaceHolder surfaceHolder = getSurfaceHolder();
-                Canvas canvas = surfaceHolder.lockHardwareCanvas();
+                Canvas canvas = lockHwCanvasIfPossible(surfaceHolder);
                 drawCanvasBackground(canvas);
                 for (Bubble bubble : mBubbles) {
                     bubble.currentRadius = bubble.maxRadius;
@@ -366,6 +368,10 @@ public class BubbleWallService extends WallpaperService {
         }
 
         private int getAccentColor() {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+                // Use holo blue as accent when on Android < Lollipop
+                return Color.parseColor("#ff33b5e5");
+            }
             TypedValue outValue = new TypedValue();
             getTheme().resolveAttribute(android.R.attr.colorAccent, outValue, true);
             return outValue.data;
@@ -479,5 +485,12 @@ public class BubbleWallService extends WallpaperService {
     private boolean isNightMode() {
         return (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) ==
                 Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    private Canvas lockHwCanvasIfPossible(SurfaceHolder surfaceHolder) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return surfaceHolder.lockCanvas();
+        }
+        return surfaceHolder.lockHardwareCanvas();
     }
 }
