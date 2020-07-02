@@ -118,8 +118,7 @@ public class BubbleWallService extends WallpaperService {
 
         @Override
         public void onZoomChanged(float zoom) {
-            if (zoom == 1) drawBubbleSizeTransition(3/4f);
-            if (zoom == 0) drawBubbleSizeTransition(1f);
+            drawBubblesFactorOfMax(Math.max(1 - zoom, .3f));
         }
 
         public void drawUiModeTransition() {
