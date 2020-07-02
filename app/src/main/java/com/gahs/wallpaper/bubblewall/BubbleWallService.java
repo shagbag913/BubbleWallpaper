@@ -67,10 +67,6 @@ public class BubbleWallService extends WallpaperService {
         public void onCreate(SurfaceHolder surfaceHolder) {
             super.onCreate(surfaceHolder);
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1) {
-                setOffsetNotificationsEnabled(false);
-            }
-
             IntentFilter intentFilter = new IntentFilter();
             intentFilter.addAction("android.intent.action.SCREEN_OFF");
             intentFilter.addAction("android.intent.action.USER_PRESENT");
@@ -118,6 +114,12 @@ public class BubbleWallService extends WallpaperService {
             } else if (mPressedBubble != null) {
                 drawBubbleTouch(false);
             }
+        }
+
+        @Override
+        public void onZoomChanged(float zoom) {
+            if (zoom == 1) drawBubbleSizeTransition(3/4f);
+            if (zoom == 0) drawBubbleSizeTransition(1f);
         }
 
         public void drawUiModeTransition() {
