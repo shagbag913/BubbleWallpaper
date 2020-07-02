@@ -36,9 +36,9 @@ public class BubbleWallService extends WallpaperService {
 
         private BroadcastReceiver mReceiver = new BubbleWallReceiver();
         private ArrayList<Bubble> mBubbles = new ArrayList<>();
-        private int mUsedBubbleColors;
-        private Boolean mDarkBg;
+        private Boolean mNightUiMode;
         private Bubble mPressedBubble;
+        private int[] mSurfaceDimensions = new int[2];
 
         private class BubbleWallReceiver extends BroadcastReceiver {
             @Override
@@ -47,15 +47,15 @@ public class BubbleWallService extends WallpaperService {
                 if (action == null) return;
                 switch (action) {
                     case "android.intent.action.USER_PRESENT":
-                        drawBubblesMinToMax();
+                        drawBubbleSizeTransition(1f);
                         break;
                     case "android.intent.action.SCREEN_OFF":
-                        drawMinimizedBubbles();
+                        drawBubblesFactorOfMax(1/3f);
                         break;
                     case "android.intent.action.CONFIGURATION_CHANGED":
-                        boolean newNightModeDark = isNightMode();
-                        if (mDarkBg && !newNightModeDark || !mDarkBg && newNightModeDark) {
-                            mDarkBg = newNightModeDark;
+                        boolean newUiModeNight = isNightMode();
+                        if (mNightUiMode && !newUiModeNight || !mNightUiMode && newUiModeNight) {
+                            mNightUiMode = newUiModeNight;
                             drawUiModeTransition();
                         }
                         break;
@@ -90,12 +90,16 @@ public class BubbleWallService extends WallpaperService {
         @Override
         public void onSurfaceChanged(SurfaceHolder surfaceHolder, int format, int width,
                                      int height) {
-            if (mDarkBg == null) {
-                mDarkBg = isNightMode();
+            if (mNightUiMode == null) {
+                mNightUiMode = isNightMode();
             }
 
+            mSurfaceDimensions[0] = width;
+            mSurfaceDimensions[1] = height;
+
             regenAllBubbles();
-            drawMaximizedBubbles();
+            drawBubblesFactorOfMax(1f);
+            drawBubblesFactorOfMax(1f);
         }
 
         @Override
@@ -116,7 +120,62 @@ public class BubbleWallService extends WallpaperService {
             }
         }
 
-        // Animations
+        public void drawUiModeTransition() {
+            SurfaceHolder surfaceHolder = getSurfaceHolder();
+            for (float x = 0f; x < 1f; x += 0.05f) {
+                Canvas canvas = lockHwCanvasIfPossible(surfaceHolder);
+                float brightness = mNightUiMode ? 1f - x : x;
+                drawCanvasBackground(canvas, brightness);
+                drawBubbles(canvas);
+                surfaceHolder.unlockCanvasAndPost(canvas);
+            }
+        }
+
+        private void drawCanvasBackground(Canvas canvas, float brightness) {
+            int r = Math.round(255 * brightness);
+            int g = Math.round(255 * brightness);
+            int b = Math.round(255 * brightness);
+
+            canvas.drawARGB(255, r, g, b);
+
+            int accent = getAccentColor();
+            canvas.drawColor(Color.argb(mNightUiMode ? 50 : 90, Color.red(accent),
+                    Color.green(accent), Color.blue(accent)));
+        }
+
+        private void drawCanvasBackground(Canvas canvas) {
+            drawCanvasBackground(canvas, mNightUiMode ? 0f : 1f);
+        }
+
+        private void drawBubbles(Canvas canvas) {
+            for (Bubble bubble : mBubbles) {
+                int x1 = (int)(bubble.currentRadius * Math.cos(Math.PI*.75) + bubble.x);
+                int y1 = (int)(bubble.currentRadius * Math.sin(Math.PI*.75) + bubble.y);
+                int x2 = (int)(bubble.currentRadius * Math.cos(Math.PI*1.75) + bubble.x);
+                int y2 = (int)(bubble.currentRadius * Math.sin(Math.PI*1.75) + bubble.y);
+                drawBubbleShadow(canvas, bubble, x1, y1, x2, y2,
+                        bubble.x + (int)bubble.currentRadius + 50,
+                        bubble.y + (int)bubble.currentRadius + 50);
+            }
+
+            for (Bubble bubble : mBubbles) {
+                canvas.drawCircle(bubble.x, bubble.y, bubble.currentRadius, bubble.fill);
+                canvas.drawCircle(bubble.x, bubble.y,
+                        bubble.currentRadius - (float)OUTLINE_SIZE / 2, bubble.outline);
+            }
+        }
+
+        private void drawBubblesFactorOfMax(float factor) {
+            SurfaceHolder surfaceHolder = getSurfaceHolder();
+            Canvas canvas = lockHwCanvasIfPossible(surfaceHolder);
+            drawCanvasBackground(canvas);
+            for (Bubble bubble : mBubbles) {
+                bubble.currentRadius = bubble.maxRadius * factor;
+            }
+            drawBubbles(canvas);
+            surfaceHolder.unlockCanvasAndPost(canvas);
+        }
+
         private void drawBubbleTouch(boolean expand) {
             SurfaceHolder surfaceHolder = getSurfaceHolder();
             for (int x = 0; x < 5; x++) {
@@ -132,48 +191,53 @@ public class BubbleWallService extends WallpaperService {
             }
         }
 
-        public void drawBubblesMinToMax() {
+        public void drawBubbleSizeTransition(float targetFactor) {
+            float[] ranges = new float[mBubbles.size()];
+            for (Bubble bubble : mBubbles) {
+                ranges[mBubbles.indexOf(bubble)] = bubble.maxRadius * targetFactor - bubble.currentRadius;
+            }
+
+            boolean expansion = ranges[0] > 0;
+
             SurfaceHolder surfaceHolder = getSurfaceHolder();
-            boolean bubblesMinimized =
-                    mBubbles.get(0).currentRadius == mBubbles.get(0).minimizedRadius;
-            bubbleloop: while (true) {
+            while (mBubbles.get(0).currentRadius != mBubbles.get(0).maxRadius * targetFactor) {
                 Canvas canvas = lockHwCanvasIfPossible(surfaceHolder);
                 drawCanvasBackground(canvas);
                 for (Bubble bubble : mBubbles) {
-                    float addToRadius = bubble.maxRadius * .25f;
-                    float speedModifier = bubble.currentRadius / ((float)bubble.maxRadius / 2);
-                    if (speedModifier > 1) {
-                        speedModifier = 2 - speedModifier;
-                    } else if (bubble.currentRadius >= bubble.minimizedRadius && bubblesMinimized) {
-                        speedModifier = (bubble.currentRadius - bubble.minimizedRadius) /
-                                ((float)bubble.maxRadius / 2);
-                    }
-                    speedModifier = Math.max(speedModifier, .001f);
-                    bubble.currentRadius += addToRadius * speedModifier;
-                    bubble.currentRadius = Math.min(bubble.currentRadius,
-                            bubble.maxRadius);
+                    float targetRadius = bubble.maxRadius * targetFactor;
+                    float addToRadius = bubble.maxRadius * .05f;
+                    float currentRange = targetRadius - bubble.currentRadius;
+                    float speedModifier = getSpeedModifier(
+                            Math.abs(ranges[mBubbles.indexOf(bubble)]), Math.abs(currentRange));
+                    bubble.currentRadius += addToRadius * speedModifier * (expansion ? 1 : -1);
+                    bubble.currentRadius = expansion ?
+                            Math.min(bubble.currentRadius, targetRadius) :
+                            Math.max(bubble.currentRadius, targetRadius);
                 }
                 drawBubbles(canvas);
                 surfaceHolder.unlockCanvasAndPost(canvas);
-                for (int x = 0; x < mBubbles.size(); ++x) {
-                    Bubble bubble = mBubbles.get(x);
-                    if (bubble.currentRadius < bubble.maxRadius) {
-                        continue bubbleloop;
-                    }
-                }
-                break;
             }
         }
 
-        public void drawUiModeTransition() {
-            SurfaceHolder surfaceHolder = getSurfaceHolder();
-            for (float x = 0f; x < 1.05f; x += 0.05f) {
-                Canvas canvas = lockHwCanvasIfPossible(surfaceHolder);
-                float brightness = Math.max(mDarkBg ? 1f - x : x, 0f);
-                drawCanvasBackground(canvas, brightness);
-                drawBubbles(canvas);
-                surfaceHolder.unlockCanvasAndPost(canvas);
-            }
+        private void drawBubbleShadow(Canvas canvas, Bubble bubble, int x1, int y1, int x2, int y2,
+                                      int x3, int y3) {
+            Path path = new Path();
+
+            path.moveTo(x1, y1);
+            path.lineTo(x2, y2);
+            path.lineTo(x3, y3);
+            path.lineTo(x1, y1);
+            path.close();
+
+            int color = bubble.outline.getColor();
+            color = Color.argb(120, Color.red(color), Color.green(color), Color.blue(color));
+
+            Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            paint.setStyle(Paint.Style.FILL_AND_STROKE);
+            paint.setShader(new LinearGradient((float)(x1 + x2) / 2, (float)(y1 + y2) / 2, x3, y3,
+                    color, Color.TRANSPARENT, Shader.TileMode.MIRROR));
+
+            canvas.drawPath(path, paint);
         }
 
         private Bubble getBubbleInBounds(int x, int y) {
@@ -210,30 +274,37 @@ public class BubbleWallService extends WallpaperService {
         private Bubble genRandomBubble() {
             Random random = new Random();
 
-            // Display dimensions
-            int displayWidth = getResources().getDisplayMetrics().widthPixels;
-            int displayHeight = getResources().getDisplayMetrics().heightPixels;
-
             int radius = 0, x = 0, y = 0;
             int overlapCount = 0;
+
+            /* Generate random radii and coordinates until we:
+             *  A. Generate dimensions that don't overlap other Bubbles, or
+             *  B. Exceed the retry count, in which case we return null
+             */
             while (bubbleOverlaps(x, y, radius) || radius == 0) {
                 radius = Math.max(random.nextInt(MAX_BUBBLE_RADIUS), MIN_BUBBLE_RADIUS);
-                x = Math.max(random.nextInt(displayWidth - radius - BUBBLE_PADDING),
+                x = Math.max(random.nextInt(mSurfaceDimensions[0] - radius - BUBBLE_PADDING),
                         radius + BUBBLE_PADDING);
-                y = Math.max(random.nextInt(displayHeight - radius - BUBBLE_PADDING),
+                y = Math.max(random.nextInt(mSurfaceDimensions[1] - radius - BUBBLE_PADDING),
                         radius + BUBBLE_PADDING);
-                ++overlapCount;
-                if (overlapCount > MAX_OVERLAP_RETRY_COUNT) {
+
+                if (++overlapCount > MAX_OVERLAP_RETRY_COUNT) {
                     return null;
                 }
             }
 
-            String[] colorArray = getResources().getStringArray(R.array.wallpaper_bubble_colors);
-            if (mUsedBubbleColors + 1 >= colorArray.length) {
-                mUsedBubbleColors = 0;
+            int[] colorPair = getRandomColorPairFromResource();
+            return new Bubble(x, y, radius, getBubblePaints(colorPair[0], colorPair[1]));
+        }
+
+        private float getSpeedModifier(float range, float toGo) {
+            float adjustedRange = range / 2;
+            float speedModifier = toGo / adjustedRange;
+            if (speedModifier > 1) {
+                // Start bringing the modifier back down when we reach half the range
+                speedModifier = 2 - speedModifier;
             }
-            return new Bubble(x, y, radius, getBubblePaints(colorArray[mUsedBubbleColors++],
-                    colorArray[mUsedBubbleColors++]));
+            return Math.max(speedModifier, .001f);
         }
 
         private boolean bubbleOverlaps(int x, int y, int radius) {
@@ -246,47 +317,15 @@ public class BubbleWallService extends WallpaperService {
             return false;
         }
 
-        private void drawBubbles(Canvas canvas) {
-            for (Bubble bubble : mBubbles) {
-                int x1 = (int)(bubble.currentRadius * Math.cos(Math.PI*.75) + bubble.x);
-                int y1 = (int)(bubble.currentRadius * Math.sin(Math.PI*.75) + bubble.y);
-                int x2 = (int)(bubble.currentRadius * Math.cos(Math.PI*1.75) + bubble.x);
-                int y2 = (int)(bubble.currentRadius * Math.sin(Math.PI*1.75) + bubble.y);
-                drawBubbleShadow(canvas, bubble, x1, y1, x2, y2,
-                        bubble.x + (int)bubble.currentRadius + 50,
-                        bubble.y + (int)bubble.currentRadius + 50);
-            }
+        private int[] getRandomColorPairFromResource() {
+            String[] colorArray = getResources().getStringArray(R.array.wallpaper_bubble_colors);
+            Random random = new Random();
 
-            for (Bubble bubble : mBubbles) {
-                canvas.drawCircle(bubble.x, bubble.y, bubble.currentRadius, bubble.fill);
-                canvas.drawCircle(bubble.x, bubble.y,
-                        Math.max(bubble.currentRadius - (float)OUTLINE_SIZE / 2, 1),
-                        bubble.outline);
-            }
-        }
+            // Outline color index is even, fill color is after
+            int outlineColorIndex = random.nextInt(colorArray.length / 2) * 2;
 
-        private void drawMinimizedBubbles() {
-            SurfaceHolder surfaceHolder = getSurfaceHolder();
-            Canvas canvas = lockHwCanvasIfPossible(surfaceHolder);
-            drawCanvasBackground(canvas);
-            for (Bubble bubble : mBubbles) {
-                bubble.currentRadius = bubble.minimizedRadius;
-            }
-            drawBubbles(canvas);
-            surfaceHolder.unlockCanvasAndPost(canvas);
-        }
-
-        private void drawMaximizedBubbles() {
-            for (int y = 0; y < 2; ++y) {
-                SurfaceHolder surfaceHolder = getSurfaceHolder();
-                Canvas canvas = lockHwCanvasIfPossible(surfaceHolder);
-                drawCanvasBackground(canvas);
-                for (Bubble bubble : mBubbles) {
-                    bubble.currentRadius = bubble.maxRadius;
-                }
-                drawBubbles(canvas);
-                surfaceHolder.unlockCanvasAndPost(canvas);
-            }
+            return new int[]{Color.parseColor(colorArray[outlineColorIndex]),
+                    Color.parseColor(colorArray[++outlineColorIndex])};
         }
 
         private int getAccentColor() {
@@ -299,54 +338,17 @@ public class BubbleWallService extends WallpaperService {
             return outValue.data;
         }
 
-        private void drawCanvasBackground(Canvas canvas, float brightness) {
-            int r = Math.round(255 * brightness);
-            int g = Math.round(255 * brightness);
-            int b = Math.round(255 * brightness);
-
-            canvas.drawARGB(255, r, g, b);
-
-            int accent = getAccentColor();
-            canvas.drawColor(Color.argb(mDarkBg ? 50 : 90, Color.red(accent),
-                    Color.green(accent), Color.blue(accent)));
-        }
-
-        private void drawCanvasBackground(Canvas canvas) {
-            drawCanvasBackground(canvas, mDarkBg ? 0f : 1f);
-        }
-
-        Paint[] getBubblePaints(String outline, String fill) {
+        Paint[] getBubblePaints(int outline, int fill) {
             Paint fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            fillPaint.setColor(Color.parseColor(fill));
+            fillPaint.setColor(fill);
             fillPaint.setStyle(Paint.Style.FILL);
 
             Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            outlinePaint.setColor(Color.parseColor(outline));
+            outlinePaint.setColor(outline);
             outlinePaint.setStrokeWidth(30);
             outlinePaint.setStyle(Paint.Style.STROKE);
 
             return new Paint[]{fillPaint, outlinePaint};
-        }
-
-        private void drawBubbleShadow(Canvas canvas, Bubble bubble, int x1, int y1, int x2, int y2,
-                                  int x3, int y3) {
-            Path path = new Path();
-
-            path.moveTo(x1, y1);
-            path.lineTo(x2, y2);
-            path.lineTo(x3, y3);
-            path.lineTo(x1, y1);
-            path.close();
-
-            int color = bubble.outline.getColor();
-            color = Color.argb(120, Color.red(color), Color.green(color), Color.blue(color));
-
-            Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            paint.setStyle(Paint.Style.FILL_AND_STROKE);
-            paint.setShader(new LinearGradient((float)(x1 + x2) / 2, (float)(y1 + y2) / 2, x3, y3,
-                    color, Color.TRANSPARENT, Shader.TileMode.MIRROR));
-
-            canvas.drawPath(path, paint);
         }
     }
 
