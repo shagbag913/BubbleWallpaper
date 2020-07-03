@@ -39,6 +39,7 @@ public class BubbleWallService extends WallpaperService {
         private Boolean mNightUiMode;
         private Bubble mPressedBubble;
         private int[] mSurfaceDimensions = new int[2];
+        private int mAccentColor;
 
         private class BubbleWallReceiver extends BroadcastReceiver {
             @Override
@@ -54,9 +55,16 @@ public class BubbleWallService extends WallpaperService {
                         break;
                     case "android.intent.action.CONFIGURATION_CHANGED":
                         boolean newUiModeNight = isNightMode();
-                        if (mNightUiMode && !newUiModeNight || !mNightUiMode && newUiModeNight) {
+                        if (mNightUiMode != newUiModeNight) {
                             mNightUiMode = newUiModeNight;
                             drawUiModeTransition();
+                        }
+                        break;
+                    case "android.intent.action.PACKAGE_CHANGED":
+                        int newAccentColor = getAccentColor();
+                        if (mAccentColor != newAccentColor) {
+                            mAccentColor = newAccentColor;
+                            drawBubblesCurrentRadius();
                         }
                         break;
                 }
@@ -71,8 +79,13 @@ public class BubbleWallService extends WallpaperService {
             intentFilter.addAction("android.intent.action.SCREEN_OFF");
             intentFilter.addAction("android.intent.action.USER_PRESENT");
             intentFilter.addAction("android.intent.action.CONFIGURATION_CHANGED");
+
+            IntentFilter intentFilter2 = new IntentFilter();
+            intentFilter2.addAction("android.intent.action.PACKAGE_CHANGED");
+            intentFilter2.addDataScheme("package");
             if (!isPreview()) {
                 registerReceiver(mReceiver, intentFilter);
+                registerReceiver(mReceiver, intentFilter2);
             }
         }
 
@@ -92,6 +105,8 @@ public class BubbleWallService extends WallpaperService {
 
             mSurfaceDimensions[0] = width;
             mSurfaceDimensions[1] = height;
+
+            mAccentColor = getAccentColor();
 
             regenAllBubbles();
             drawBubblesFactorOfMax(1f);
@@ -139,9 +154,8 @@ public class BubbleWallService extends WallpaperService {
 
             canvas.drawARGB(255, r, g, b);
 
-            int accent = getAccentColor();
-            canvas.drawColor(Color.argb(mNightUiMode ? 50 : 90, Color.red(accent),
-                    Color.green(accent), Color.blue(accent)));
+            canvas.drawColor(Color.argb(mNightUiMode ? 50 : 90, Color.red(mAccentColor),
+                    Color.green(mAccentColor), Color.blue(mAccentColor)));
         }
 
         private void drawCanvasBackground(Canvas canvas) {
@@ -164,6 +178,14 @@ public class BubbleWallService extends WallpaperService {
                 canvas.drawCircle(bubble.x, bubble.y,
                         bubble.currentRadius - (float)OUTLINE_SIZE / 2, bubble.outline);
             }
+        }
+
+        private void drawBubblesCurrentRadius() {
+            SurfaceHolder surfaceHolder = getSurfaceHolder();
+            Canvas canvas = lockHwCanvasIfPossible(surfaceHolder);
+            drawCanvasBackground(canvas);
+            drawBubbles(canvas);
+            surfaceHolder.unlockCanvasAndPost(canvas);
         }
 
         private void drawBubblesFactorOfMax(float factor) {
