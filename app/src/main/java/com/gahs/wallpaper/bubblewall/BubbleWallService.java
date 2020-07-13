@@ -42,6 +42,7 @@ public class BubbleWallService extends WallpaperService {
         private Bubble mPressedBubble;
         private int[] mSurfaceDimensions = new int[2];
         private int mAccentColor;
+        private float mCurrentGradientFactor;
 
         private class BubbleWallReceiver extends BroadcastReceiver {
             @Override
@@ -135,17 +136,29 @@ public class BubbleWallService extends WallpaperService {
             drawBubblesFactorOfMax(Math.max(1 - zoom, .3f));
         }
 
-        private void drawCanvasBackground(Canvas canvas, float brightness) {
+        private void drawCanvasGradient(Canvas canvas, float factor) {
+            mCurrentGradientFactor = factor;
+            int darkColor = adjustColorAlpha(mAccentColor, mNightUiMode ? .1f : .6f);
+            int brightColor = adjustColorAlpha(mAccentColor, mNightUiMode ? .3f : .3f);
+            float height = mSurfaceDimensions[1] - mSurfaceDimensions[1] * (factor * .5f);
+            Paint paint = new Paint();
+            paint.setShader(new LinearGradient(
+                    0f, (float)mSurfaceDimensions[1], 0f, height, darkColor, brightColor,
+                    LinearGradient.TileMode.CLAMP));
+            canvas.drawRect(0, 0, mSurfaceDimensions[0], mSurfaceDimensions[1], paint);
+        }
+
+        private void drawCanvasBackground(Canvas canvas, float brightness, float gradientFactor) {
             int r = Math.round(255 * brightness);
             int g = Math.round(255 * brightness);
             int b = Math.round(255 * brightness);
 
             canvas.drawARGB(255, r, g, b);
-            canvas.drawColor(adjustColorAlpha(mAccentColor, .3f));
+            drawCanvasGradient(canvas, gradientFactor);
         }
 
         private void drawCanvasBackground(Canvas canvas) {
-            drawCanvasBackground(canvas, mNightUiMode ? 0f : 1f);
+            drawCanvasBackground(canvas, mNightUiMode ? 0f : 1f, mCurrentGradientFactor);
         }
 
         private void drawBubbles(Canvas canvas) {
@@ -177,7 +190,7 @@ public class BubbleWallService extends WallpaperService {
         private void drawBubblesFactorOfMax(float factor) {
             SurfaceHolder surfaceHolder = getSurfaceHolder();
             Canvas canvas = lockHwCanvasIfPossible(surfaceHolder);
-            drawCanvasBackground(canvas);
+            drawCanvasBackground(canvas, mNightUiMode ? 0f : 1f, factor);
             for (Bubble bubble : mBubbles) {
                 bubble.currentRadius = bubble.maxRadius * factor;
             }
@@ -190,7 +203,7 @@ public class BubbleWallService extends WallpaperService {
             for (float x = 0f; x < 1f; x += 0.05f) {
                 Canvas canvas = lockHwCanvasIfPossible(surfaceHolder);
                 float brightness = mNightUiMode ? 1f - x : x;
-                drawCanvasBackground(canvas, brightness);
+                drawCanvasBackground(canvas, brightness, mCurrentGradientFactor);
                 drawBubbles(canvas);
                 surfaceHolder.unlockCanvasAndPost(canvas);
             }
@@ -227,7 +240,17 @@ public class BubbleWallService extends WallpaperService {
             SurfaceHolder surfaceHolder = getSurfaceHolder();
             while (mBubbles.get(0).currentRadius != mBubbles.get(0).maxRadius * targetFactor) {
                 Canvas canvas = lockHwCanvasIfPossible(surfaceHolder);
-                drawCanvasBackground(canvas);
+
+                float firstBubbleRange = Math.abs(targetRadii[0] - mBubbles.get(0).currentRadius);
+                float gradientFactor = 1 - firstBubbleRange / ranges[0];
+                // The gradient factor is tied to all Bubble drawing events.
+                // If target gradient factor height is above (if we're expanding) or below (if
+                // we aren't expanding) the current factor, wait to change the gradient factor
+                // so it's smooth.
+                gradientFactor = expansion ? Math.max(gradientFactor, mCurrentGradientFactor) :
+                        Math.min(gradientFactor, mCurrentGradientFactor);
+                drawCanvasBackground(canvas, mNightUiMode ? 0f : 1f, gradientFactor);
+
                 for (Bubble bubble : mBubbles) {
                     int index = mBubbles.indexOf(bubble);
                     float currentRange = targetRadii[index] - bubble.currentRadius;
