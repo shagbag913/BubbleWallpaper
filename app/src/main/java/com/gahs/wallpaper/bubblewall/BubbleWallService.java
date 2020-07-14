@@ -140,7 +140,7 @@ public class BubbleWallService extends WallpaperService {
             mCurrentGradientFactor = factor;
             int darkColor = adjustColorAlpha(mAccentColor, mNightUiMode ? .1f : .6f);
             int brightColor = adjustColorAlpha(mAccentColor, mNightUiMode ? .3f : .3f);
-            float height = mSurfaceDimensions[1] - mSurfaceDimensions[1] * (factor * .5f);
+            float height = mSurfaceDimensions[1] - mSurfaceDimensions[1] * (factor * .75f);
             Paint paint = new Paint();
             paint.setShader(new LinearGradient(
                     0f, (float)mSurfaceDimensions[1], 0f, height, darkColor, brightColor,
