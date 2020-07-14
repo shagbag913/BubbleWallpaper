@@ -163,18 +163,18 @@ public class BubbleWallService extends WallpaperService {
 
         private void drawBubbles(Canvas canvas) {
             for (Bubble bubble : mBubbles) {
-                int x1 = (int)(bubble.currentRadius * Math.cos(Math.PI * .25) + bubble.x);
-                int y1 = (int)(bubble.currentRadius * Math.sin(Math.PI * .25) + bubble.y);
-                int x2 = (int)(bubble.currentRadius * Math.cos(Math.PI * 1.25) + bubble.x);
-                int y2 = (int)(bubble.currentRadius * Math.sin(Math.PI * 1.25) + bubble.y);
-                int x3 = (int)(bubble.x + bubble.maxRadius * 1.2);
-                int y3 = (int)(bubble.y - bubble.maxRadius * 1.2);
+                int x1 = (int)(bubble.currentRadius * Math.cos(Math.PI * .25) + bubble.baseX);
+                int y1 = (int)(bubble.currentRadius * Math.sin(Math.PI * .25) + bubble.baseY);
+                int x2 = (int)(bubble.currentRadius * Math.cos(Math.PI * 1.25) + bubble.baseX);
+                int y2 = (int)(bubble.currentRadius * Math.sin(Math.PI * 1.25) + bubble.baseY);
+                int x3 = (int)(bubble.baseX + bubble.baseRadius * 1.2);
+                int y3 = (int)(bubble.baseY - bubble.baseRadius * 1.2);
                 drawBubbleShadow(canvas, bubble, x1, y1, x2, y2, x3, y3);
             }
 
             for (Bubble bubble : mBubbles) {
-                canvas.drawCircle(bubble.x, bubble.y, bubble.currentRadius, bubble.fill);
-                canvas.drawCircle(bubble.x, bubble.y,
+                canvas.drawCircle(bubble.baseX, bubble.baseY, bubble.currentRadius, bubble.fill);
+                canvas.drawCircle(bubble.baseX, bubble.baseY,
                         bubble.currentRadius - (float)OUTLINE_SIZE / 2, bubble.outline);
             }
         }
@@ -192,7 +192,7 @@ public class BubbleWallService extends WallpaperService {
             Canvas canvas = lockHwCanvasIfPossible(surfaceHolder);
             drawCanvasBackground(canvas, mNightUiMode ? 0f : 1f, factor);
             for (Bubble bubble : mBubbles) {
-                bubble.currentRadius = bubble.maxRadius * factor;
+                bubble.currentRadius = bubble.baseRadius * factor;
             }
             drawBubbles(canvas);
             surfaceHolder.unlockCanvasAndPost(canvas);
@@ -230,15 +230,15 @@ public class BubbleWallService extends WallpaperService {
             float[] addToRadius = new float[mBubbles.size()];
             for (Bubble bubble : mBubbles) {
                 int index = mBubbles.indexOf(bubble);
-                targetRadii[index] = bubble.maxRadius * targetFactor;
+                targetRadii[index] = bubble.baseRadius * targetFactor;
                 ranges[index] = targetRadii[index] - bubble.currentRadius;
-                addToRadius[index] = bubble.maxRadius * .05f;
+                addToRadius[index] = bubble.baseRadius * .05f;
             }
 
             boolean expansion = ranges[0] > 0;
 
             SurfaceHolder surfaceHolder = getSurfaceHolder();
-            while (mBubbles.get(0).currentRadius != mBubbles.get(0).maxRadius * targetFactor) {
+            while (mBubbles.get(0).currentRadius != mBubbles.get(0).baseRadius * targetFactor) {
                 Canvas canvas = lockHwCanvasIfPossible(surfaceHolder);
 
                 float firstBubbleRange = Math.abs(targetRadii[0] - mBubbles.get(0).currentRadius);
@@ -287,8 +287,8 @@ public class BubbleWallService extends WallpaperService {
 
         private Bubble getBubbleInBounds(int x, int y) {
             for (Bubble bubble : mBubbles) {
-                if (Math.pow(x - bubble.x, 2) + Math.pow(y - bubble.y, 2) <
-                        Math.pow(bubble.maxRadius, 2)) {
+                if (Math.pow(x - bubble.baseX, 2) + Math.pow(y - bubble.baseY, 2) <
+                        Math.pow(bubble.baseRadius, 2)) {
                     return bubble;
                 }
             }
@@ -354,8 +354,8 @@ public class BubbleWallService extends WallpaperService {
 
         private boolean bubbleOverlaps(int x, int y, int radius) {
             for (Bubble bubble : mBubbles) {
-                double distance = Math.sqrt(Math.pow(x - bubble.x, 2) + Math.pow(y - bubble.y, 2));
-                if (distance < radius + bubble.maxRadius + BUBBLE_PADDING) {
+                double distance = Math.sqrt(Math.pow(x - bubble.baseX, 2) + Math.pow(y - bubble.baseY, 2));
+                if (distance < radius + bubble.baseRadius + BUBBLE_PADDING) {
                     return true;
                 }
             }
@@ -409,17 +409,17 @@ public class BubbleWallService extends WallpaperService {
     }
 
     private static class Bubble {
-        int x;
-        int y;
-        int maxRadius;
+        int baseX;
+        int baseY;
+        int baseRadius;
         float currentRadius;
         Paint outline;
         Paint fill;
 
-        Bubble(int x, int y, int maxRadius, Paint[] paints) {
-            this.x = x;
-            this.y = y;
-            this.maxRadius = maxRadius;
+        Bubble(int baseX, int baseY, int baseRadius, Paint[] paints) {
+            this.baseX = baseX;
+            this.baseY = baseY;
+            this.baseRadius = baseRadius;
             this.outline = paints[1];
             this.fill = paints[0];
         }
