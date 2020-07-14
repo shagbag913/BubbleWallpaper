@@ -163,13 +163,13 @@ public class BubbleWallService extends WallpaperService {
 
         private void drawBubbles(Canvas canvas) {
             for (Bubble bubble : mBubbles) {
-                int x1 = (int)(bubble.currentRadius * Math.cos(Math.PI*.75) + bubble.x);
-                int y1 = (int)(bubble.currentRadius * Math.sin(Math.PI*.75) + bubble.y);
-                int x2 = (int)(bubble.currentRadius * Math.cos(Math.PI*1.75) + bubble.x);
-                int y2 = (int)(bubble.currentRadius * Math.sin(Math.PI*1.75) + bubble.y);
-                drawBubbleShadow(canvas, bubble, x1, y1, x2, y2,
-                        bubble.x + (int)bubble.currentRadius + 50,
-                        bubble.y + (int)bubble.currentRadius + 50);
+                int x1 = (int)(bubble.currentRadius * Math.cos(Math.PI * .25) + bubble.x);
+                int y1 = (int)(bubble.currentRadius * Math.sin(Math.PI * .25) + bubble.y);
+                int x2 = (int)(bubble.currentRadius * Math.cos(Math.PI * 1.25) + bubble.x);
+                int y2 = (int)(bubble.currentRadius * Math.sin(Math.PI * 1.25) + bubble.y);
+                int x3 = (int)(bubble.x + bubble.maxRadius * 1.2);
+                int y3 = (int)(bubble.y - bubble.maxRadius * 1.2);
+                drawBubbleShadow(canvas, bubble, x1, y1, x2, y2, x3, y3);
             }
 
             for (Bubble bubble : mBubbles) {
