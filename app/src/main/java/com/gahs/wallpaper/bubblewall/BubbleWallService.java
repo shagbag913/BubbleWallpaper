@@ -9,7 +9,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
-import android.graphics.Path;
 import android.graphics.RadialGradient;
 import android.graphics.Shader;
 import android.os.Build;
@@ -44,6 +43,7 @@ public class BubbleWallService extends WallpaperService {
         private int[] mSurfaceDimensions = new int[2];
         private int mAccentColor;
         private float mCurrentGradientFactor;
+        private String[] mColorPairs;
 
         private class BubbleWallReceiver extends BroadcastReceiver {
             @Override
@@ -108,6 +108,7 @@ public class BubbleWallService extends WallpaperService {
 
             mNightUiMode = isNightMode();
             mAccentColor = getAccentColor();
+            mColorPairs = getResources().getStringArray(R.array.wallpaper_bubble_colors);
 
             regenAllBubbles();
             drawBubblesFactorOfMax(1f);
@@ -367,14 +368,13 @@ public class BubbleWallService extends WallpaperService {
         }
 
         private int[] getRandomColorPairFromResource() {
-            String[] colorArray = getResources().getStringArray(R.array.wallpaper_bubble_colors);
             Random random = new Random();
 
             // Outline color index is even, fill color is after
-            int outlineColorIndex = random.nextInt(colorArray.length / 2) * 2;
+            int outlineColorIndex = random.nextInt(mColorPairs.length / 2) * 2;
 
-            return new int[]{Color.parseColor(colorArray[outlineColorIndex]),
-                    Color.parseColor(colorArray[++outlineColorIndex])};
+            return new int[]{Color.parseColor(mColorPairs[outlineColorIndex]),
+                    Color.parseColor(mColorPairs[++outlineColorIndex])};
         }
 
         @ColorInt
