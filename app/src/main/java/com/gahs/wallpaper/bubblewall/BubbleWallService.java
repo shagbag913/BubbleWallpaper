@@ -10,6 +10,7 @@ import android.graphics.Color;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.RadialGradient;
 import android.graphics.Shader;
 import android.os.Build;
 import android.service.wallpaper.WallpaperService;
@@ -164,17 +165,18 @@ public class BubbleWallService extends WallpaperService {
 
         private void drawBubbles(Canvas canvas) {
             for (Bubble bubble : mBubbles) {
-                int x1 = (int)(bubble.currentRadius * Math.cos(Math.PI * .25) + bubble.currentX);
-                int y1 = (int)(bubble.currentRadius * Math.sin(Math.PI * .25) + bubble.currentY);
-                int x2 = (int)(bubble.currentRadius * Math.cos(Math.PI * 1.25) + bubble.currentX);
-                int y2 = (int)(bubble.currentRadius * Math.sin(Math.PI * 1.25) + bubble.currentY);
-                int x3 = (int)(bubble.currentX + bubble.baseRadius * 1.2);
-                int y3 = (int)(bubble.currentY - bubble.baseRadius * 1.2);
-                drawBubbleShadow(canvas, bubble, x1, y1, x2, y2, x3, y3);
-            }
+                // Bubble shadows
+                float shadowX = bubble.currentX + bubble.currentRadius / 6;
+                float shadowY = bubble.currentY + bubble.currentRadius / 6;
+                Paint paint = new Paint();
+                paint.setShader(new RadialGradient(shadowX, shadowY, bubble.currentRadius,
+                        Color.BLACK, Color.TRANSPARENT, Shader.TileMode.CLAMP));
+                canvas.drawCircle(shadowX, shadowY, bubble.currentRadius, paint);
 
-            for (Bubble bubble : mBubbles) {
+                // Bubble
                 canvas.drawCircle(bubble.currentX, bubble.currentY, bubble.currentRadius, bubble.fill);
+
+                // Bubble outline
                 canvas.drawCircle(bubble.currentX, bubble.currentY,
                         bubble.currentRadius - (float)OUTLINE_SIZE / 2, bubble.outline);
             }
@@ -266,24 +268,6 @@ public class BubbleWallService extends WallpaperService {
                 drawBubbles(canvas);
                 surfaceHolder.unlockCanvasAndPost(canvas);
             }
-        }
-
-        private void drawBubbleShadow(Canvas canvas, Bubble bubble, int x1, int y1, int x2, int y2,
-                                      int x3, int y3) {
-            Path path = new Path();
-            path.moveTo(x1, y1);
-            path.lineTo(x2, y2);
-            path.lineTo(x3, y3);
-            path.lineTo(x1, y1);
-            path.close();
-
-            int color = adjustColorAlpha(bubble.outline.getColor(), .5f);
-            Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            paint.setStyle(Paint.Style.FILL_AND_STROKE);
-            paint.setShader(new LinearGradient((x1 + x2) / 2f, (y1 + y2) / 2f, x3, y3,
-                    color, Color.TRANSPARENT, Shader.TileMode.MIRROR));
-
-            canvas.drawPath(path, paint);
         }
 
         private Bubble getBubbleInBounds(int x, int y) {
