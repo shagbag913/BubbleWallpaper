@@ -44,6 +44,7 @@ public class BubbleWallService extends WallpaperService {
         private int mAccentColor;
         private float mCurrentGradientFactor;
         private String[] mColorPairs;
+        private float mZoomLevel;
 
         private class BubbleWallReceiver extends BroadcastReceiver {
             @Override
@@ -52,9 +53,15 @@ public class BubbleWallService extends WallpaperService {
                 if (action == null) return;
                 switch (action) {
                     case Intent.ACTION_USER_PRESENT:
+                        // Restore zoom level
+                        adjustBubbleCoordinates(mZoomLevel);
+
                         drawBubblesFactorOfMaxSmoothly(1f);
                         break;
                     case Intent.ACTION_SCREEN_OFF:
+                        // Reset zoom level on screen off
+                        adjustBubbleCoordinates(0);
+
                         drawBubblesFactorOfMax(1/3f);
                         break;
                     case Intent.ACTION_CONFIGURATION_CHANGED:
@@ -135,6 +142,7 @@ public class BubbleWallService extends WallpaperService {
 
         @Override
         public void onZoomChanged(float zoom) {
+            mZoomLevel = zoom;
             adjustBubbleCoordinates(zoom);
             drawBubblesFactorOfMax(Math.max(1 - zoom, .2f));
         }
