@@ -40,7 +40,8 @@ public class BubbleWallService extends WallpaperService {
         private ArrayList<Bubble> mBubbles = new ArrayList<>();
         private boolean mNightUiMode;
         private Bubble mPressedBubble;
-        private int[] mSurfaceDimensions = new int[2];
+        private int mSurfaceHeight;
+        private int mSurfaceWidth;
         private int mAccentColor;
         private float mCurrentGradientFactor;
         private String[] mColorPairs;
@@ -110,8 +111,8 @@ public class BubbleWallService extends WallpaperService {
         @Override
         public void onSurfaceChanged(SurfaceHolder surfaceHolder, int format, int width,
                                      int height) {
-            mSurfaceDimensions[0] = width;
-            mSurfaceDimensions[1] = height;
+            mSurfaceHeight = height;
+            mSurfaceWidth = width;
 
             mNightUiMode = isNightMode();
             mAccentColor = getAccentColor();
@@ -151,12 +152,12 @@ public class BubbleWallService extends WallpaperService {
             mCurrentGradientFactor = factor;
             int darkColor = adjustColorAlpha(mAccentColor, mNightUiMode ? .1f : .6f);
             int brightColor = adjustColorAlpha(mAccentColor, mNightUiMode ? .3f : .3f);
-            float height = mSurfaceDimensions[1] - mSurfaceDimensions[1] * (factor * .75f);
+            float height = mSurfaceHeight - mSurfaceHeight * (factor * .75f);
             Paint paint = new Paint();
             paint.setShader(new LinearGradient(
-                    0f, (float)mSurfaceDimensions[1], 0f, height, darkColor, brightColor,
+                    0f, (float)mSurfaceHeight, 0f, height, darkColor, brightColor,
                     LinearGradient.TileMode.CLAMP));
-            canvas.drawRect(0, 0, mSurfaceDimensions[0], mSurfaceDimensions[1], paint);
+            canvas.drawRect(0, 0, mSurfaceWidth, mSurfaceHeight, paint);
         }
 
         private void drawCanvasBackground(Canvas canvas, float brightness, float gradientFactor) {
@@ -298,8 +299,8 @@ public class BubbleWallService extends WallpaperService {
         private void adjustBubbleCoordinates(float factor) {
             for (Bubble bubble : mBubbles) {
                 // Convert Bubble coordinates into coordinate plane compatible coordinates
-                int halfWidth = mSurfaceDimensions[0] / 2;
-                int halfHeight = mSurfaceDimensions[1] / 2;
+                int halfWidth = mSurfaceHeight / 2;
+                int halfHeight = mSurfaceWidth / 2;
                 float distanceFromXInt = halfWidth - bubble.currentX;
                 if (distanceFromXInt < halfWidth) {
                     distanceFromXInt *= -1;
@@ -341,9 +342,9 @@ public class BubbleWallService extends WallpaperService {
              */
             while (bubbleOverlaps(x, y, radius) || radius == 0) {
                 radius = Math.max(random.nextInt(MAX_BUBBLE_RADIUS), MIN_BUBBLE_RADIUS);
-                x = Math.max(random.nextInt(mSurfaceDimensions[0] - radius - BUBBLE_PADDING),
+                x = Math.max(random.nextInt(mSurfaceWidth - radius - BUBBLE_PADDING),
                         radius + BUBBLE_PADDING);
-                y = Math.max(random.nextInt(mSurfaceDimensions[1] - radius - BUBBLE_PADDING),
+                y = Math.max(random.nextInt(mSurfaceHeight - radius - BUBBLE_PADDING),
                         radius + BUBBLE_PADDING);
 
                 if (++overlapCount > MAX_OVERLAP_RETRY_COUNT) {
