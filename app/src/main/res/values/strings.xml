@@ -4,23 +4,37 @@
     <string name="wallpaper_desc">Bubbles with clicky and growy effects!</string>
     <string name="wallpaper_author">shagbag913</string>
     <string-array name="wallpaper_bubble_colors">
-        <item>#4654bd</item>
-        <item>#5763bd</item>
-        <item>#bd4646</item>
-        <item>#bf5a5a</item>
-        <item>#a8a62f</item>
-        <item>#bdbb6f</item>
-        <item>#519651</item>
-        <item>#6fa36f</item>
-        <item>#38a196</item>
-        <item>#58a39b</item>
-        <item>#543185</item>
-        <item>#694f8f</item>
-        <item>#752271</item>
-        <item>#7a3877</item>
-        <item>#63402e</item>
-        <item>#755646</item>
-        <item>#3ad1d6</item>
-        <item>#68d5d9</item>
+        <item>#f03535</item>
+        <item>#ff4545</item>
+
+        <item>#0562ff</item>
+        <item>#1c70ff</item>
+
+        <item>#21ff5c</item>
+        <item>#4fff7e</item>
+
+        <item>#fffc33</item>
+        <item>#fffd6e</item>
+
+        <item>#1ff0ff</item>
+        <item>#4ff3ff</item>
+
+        <item>#f04aff</item>
+        <item>#f25cff</item>
+
+        <item>#c229ff</item>
+        <item>#c840ff</item>
+
+        <item>#ff298d</item>
+        <item>#ff4fa1</item>
+
+        <item>#9fff29</item>
+        <item>#b0ff4f</item>
+
+        <item>#30ffb6</item>
+        <item>#4fffc1</item>
+
+        <item>#ffc524</item>
+        <item>#ffce45</item>
     </string-array>
 </resources>
