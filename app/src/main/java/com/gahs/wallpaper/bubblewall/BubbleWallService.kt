@@ -348,16 +348,15 @@ class BubbleWallService: WallpaperService() {
         var currentX = baseX.toFloat()
         var currentY = baseY.toFloat()
         var currentRadius = baseRadius.toFloat()
-        var color = randomColorFromResource
-        var fillPaint = bubbleFillPaint
 
-        private val bubbleFillPaint: Paint
-            get() {
-                val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-                paint.color = color
-                paint.style = Paint.Style.FILL
-                return paint
-            }
+        private var color = randomColorFromResource
+
+        val fillPaint: Paint by lazy {
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+            paint.color = color
+            paint.style = Paint.Style.FILL
+            paint
+        }
 
         val shadowX: Float
             get() = currentX + currentRadius / 6
