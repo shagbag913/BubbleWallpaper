@@ -42,7 +42,7 @@ class BubbleWallService: WallpaperService() {
         private var pressedBubble: Bubble? = null
         private var surfaceHeight = 0
         private var surfaceWidth = 0
-        private var currentGradientFactor = 0f
+        private var currentFactor = 0f
         private var zoomLevel = 0f
 
         private inner class BubbleWallReceiver: BroadcastReceiver() {
@@ -126,7 +126,7 @@ class BubbleWallService: WallpaperService() {
 
         private fun drawCanvasBackground(canvas: Canvas,
                                          brightness: Float = if (isNightMode) 0f else 1f,
-                                         gradientFactor: Float = currentGradientFactor) {
+                                         factor: Float = currentFactor) {
             // Draw grayscale color
             val r = (255 * brightness).roundToInt()
             val g = (255 * brightness).roundToInt()
@@ -134,10 +134,10 @@ class BubbleWallService: WallpaperService() {
             canvas.drawARGB(255, r, g, b)
 
             // Draw gradient
-            currentGradientFactor = gradientFactor
+            currentFactor = factor
             val darkColor = adjustColorAlpha(accentColor, if (isNightMode) .1f else .6f)
             val brightColor = adjustColorAlpha(accentColor, .3f)
-            val height = surfaceHeight - surfaceHeight * (gradientFactor * .75f)
+            val height = surfaceHeight - surfaceHeight * (factor * .75f)
             val paint = Paint()
             paint.shader = LinearGradient(0f, surfaceHeight.toFloat(), 0f, height, darkColor,
                     brightColor, Shader.TileMode.CLAMP)
@@ -180,7 +180,7 @@ class BubbleWallService: WallpaperService() {
             for (x in if (isNightMode) 20 downTo 0 else 0..20) {
                 val canvas = lockHwCanvasIfPossible(surfaceHolder)
                 val brightness = x / 20f
-                drawCanvasBackground(canvas, brightness, currentGradientFactor)
+                drawCanvasBackground(canvas, brightness)
                 drawBubbles(canvas)
                 surfaceHolder.unlockCanvasAndPost(canvas)
             }
@@ -203,27 +203,22 @@ class BubbleWallService: WallpaperService() {
             var bubbleZeroTotalRange = bubbleZeroTargetRadius - bubbles[0].currentRadius
             val isExpansion = bubbleZeroTotalRange > 0
             bubbleZeroTotalRange = abs(bubbleZeroTotalRange)
+            var newFactor: Float
             val surfaceHolder = surfaceHolder
 
             while (bubbles[0].currentRadius < bubbleZeroTargetRadius) {
                 val canvas = lockHwCanvasIfPossible(surfaceHolder)
                 val bubbleZeroCurrentRange = abs(bubbleZeroTargetRadius - bubbles[0].currentRadius)
                 val speedModifier = getSpeedModifier(bubbleZeroTotalRange, bubbleZeroCurrentRange)
+                val addToFactor = .05f * speedModifier * if (isExpansion) 1 else -1
 
-                // The gradient factor is tied to all Bubble drawing events.
-                // If target gradient factor height is above (if we're expanding) or below (if
-                // we aren't expanding) the current factor, wait to change the gradient factor
-                // so it's smooth.
-                var gradientFactor = 1 - bubbleZeroCurrentRange / bubbleZeroTotalRange
-                gradientFactor = if (isExpansion)
-                    gradientFactor.coerceAtLeast(currentGradientFactor)
-                else
-                    gradientFactor.coerceAtMost(currentGradientFactor)
-                drawCanvasBackground(canvas, if (isNightMode) 0f else 1f, gradientFactor)
+                // Background gradient
+                newFactor = currentFactor + addToFactor
+                drawCanvasBackground(canvas, if (isNightMode) 0f else 1f, newFactor)
 
                 for (bubble in bubbles) {
                     bubble.currentRadius +=
-                            bubble.baseRadius * .05f * speedModifier * if (isExpansion) 1 else -1
+                            bubble.baseRadius * addToFactor
                 }
                 drawBubbles(canvas)
                 surfaceHolder.unlockCanvasAndPost(canvas)
