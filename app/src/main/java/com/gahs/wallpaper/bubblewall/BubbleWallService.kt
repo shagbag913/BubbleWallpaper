@@ -36,7 +36,6 @@ class BubbleWallService: WallpaperService() {
         private val maxBubbleRadius = 250
         private val minBubbleRadius = 20
         private val overlapRetryCount = 50
-        private val outlineSize = 30
 
         private val receiver: BroadcastReceiver = BubbleWallReceiver()
         private val bubbles = ArrayList<Bubble>()
@@ -148,20 +147,12 @@ class BubbleWallService: WallpaperService() {
         private fun drawBubbles(canvas: Canvas) {
             for (bubble in bubbles) {
                 // Bubble shadow
-                val shadowX = bubble.currentX + bubble.currentRadius / 6
-                val shadowY = bubble.currentY + bubble.currentRadius / 6
-                val paint = Paint()
-                paint.shader = RadialGradient(shadowX, shadowY, bubble.currentRadius, Color.BLACK,
-                        Color.TRANSPARENT, Shader.TileMode.CLAMP)
-                canvas.drawCircle(shadowX, shadowY, bubble.currentRadius, paint)
+                canvas.drawCircle(bubble.shadowX, bubble.shadowY, bubble.currentRadius,
+                        bubble.shadowPaint)
 
                 // Bubble
                 canvas.drawCircle(bubble.currentX, bubble.currentY, bubble.currentRadius,
                         bubble.fillPaint)
-
-                // Bubble outline
-                canvas.drawCircle(bubble.currentX, bubble.currentY,
-                        bubble.currentRadius - outlineSize / 2, bubble.outlinePaint)
             }
         }
 
@@ -303,9 +294,7 @@ class BubbleWallService: WallpaperService() {
                     return null
                 }
             }
-            val colorPair = randomColorPairFromResource
-            return Bubble(x, y, radius, getBubbleOutlinePaint(colorPair[0]),
-                    getBubbleFillPaint(colorPair[1]))
+            return Bubble(x, y, radius)
         }
 
         private fun getSpeedModifier(range: Float, toGo: Float): Float {
@@ -329,16 +318,6 @@ class BubbleWallService: WallpaperService() {
             return false
         }
 
-        // Outline color index is even, fill color is after
-        private val randomColorPairFromResource: IntArray
-            get() {
-                val random = Random
-                val resourceColorArray = resources.getStringArray(R.array.wallpaper_bubble_colors)
-                var outlineColorIndex = random.nextInt(resourceColorArray.size / 2) * 2
-                return intArrayOf(Color.parseColor(resourceColorArray[outlineColorIndex]),
-                        Color.parseColor(resourceColorArray[++outlineColorIndex]))
-            }
-
         // Use holo blue as accent when on Android < Lollipop
         @get:ColorInt
         private val accentColor: Int
@@ -352,21 +331,6 @@ class BubbleWallService: WallpaperService() {
                 return outValue.data
             }
 
-        fun getBubbleFillPaint(color: Int): Paint {
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-            paint.color = color
-            paint.style = Paint.Style.FILL
-            return paint
-        }
-
-        fun getBubbleOutlinePaint(color: Int): Paint {
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-            paint.color = color
-            paint.strokeWidth = outlineSize.toFloat()
-            paint.style = Paint.Style.STROKE
-            return paint
-        }
-
         @ColorInt
         private fun adjustColorAlpha(color: Int, factor: Float): Int {
             val alpha = (Color.alpha(color) * factor).roundToInt()
@@ -377,20 +341,50 @@ class BubbleWallService: WallpaperService() {
         }
     }
 
-    private class Bubble constructor(
+    private inner class Bubble constructor(
             var baseX: Int,
             var baseY: Int,
-            var baseRadius: Int,
-            var outlinePaint: Paint,
-            var fillPaint: Paint) {
-        var currentX: Float = baseX.toFloat()
-        var currentY: Float = baseY.toFloat()
-        var currentRadius: Float = baseRadius.toFloat()
+            var baseRadius: Int) {
+        var currentX = baseX.toFloat()
+        var currentY = baseY.toFloat()
+        var currentRadius = baseRadius.toFloat()
+        var color = randomColorFromResource
+        var fillPaint = bubbleFillPaint
+
+        private val bubbleFillPaint: Paint
+            get() {
+                val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+                paint.color = color
+                paint.style = Paint.Style.FILL
+                return paint
+            }
+
+        val shadowX: Float
+            get() = currentX + currentRadius / 6
+
+        val shadowY: Float
+            get() = currentY + currentRadius / 6
+
+        val shadowPaint: Paint
+            get() {
+                val paint = Paint()
+                paint.shader = RadialGradient(shadowX, shadowY, currentRadius, Color.BLACK,
+                        Color.TRANSPARENT, Shader.TileMode.CLAMP)
+                return paint
+            }
     }
+
+    private val randomColorFromResource: Int
+        get() {
+            val random = Random
+            val resourceColorArray = resources.getStringArray(R.array.wallpaper_bubble_colors)
+            return Color.parseColor(resourceColorArray[random.nextInt(resourceColorArray.size)])
+        }
 
     private val isNightMode: Boolean
         get() = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
                 Configuration.UI_MODE_NIGHT_YES
+
 
     private fun lockHwCanvasIfPossible(surfaceHolder: SurfaceHolder): Canvas {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
