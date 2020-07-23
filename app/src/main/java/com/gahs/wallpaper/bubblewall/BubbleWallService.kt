@@ -270,9 +270,9 @@ class BubbleWallService: WallpaperService() {
                 // Convert Bubble coordinates into coordinate plane compatible coordinates
                 val halfWidth = mSurfaceWidth / 2
                 val halfHeight = mSurfaceHeight / 2
-                var distanceFromXInt = halfWidth - bubble.currentX
+                var distanceFromXInt = halfWidth - bubble.baseX.toFloat()
                 if (distanceFromXInt < halfWidth) distanceFromXInt *= -1f
-                var distanceFromYInt = halfHeight - bubble.currentY
+                var distanceFromYInt = halfHeight - bubble.baseY.toFloat()
                 if (distanceFromYInt < halfHeight) distanceFromYInt *= -1f
 
                 bubble.currentX = bubble.baseX - distanceFromXInt * factor
