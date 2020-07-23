@@ -38,13 +38,13 @@ class BubbleWallService: WallpaperService() {
         private val overlapRetryCount = 50
         private val outlineSize = 30
 
-        private val mReceiver: BroadcastReceiver = BubbleWallReceiver()
-        private val mBubbles = ArrayList<Bubble>()
-        private var mPressedBubble: Bubble? = null
-        private var mSurfaceHeight = 0
-        private var mSurfaceWidth = 0
-        private var mCurrentGradientFactor = 0f
-        private var mZoomLevel = 0f
+        private val receiver: BroadcastReceiver = BubbleWallReceiver()
+        private val bubbles = ArrayList<Bubble>()
+        private var pressedBubble: Bubble? = null
+        private var surfaceHeight = 0
+        private var surfaceWidth = 0
+        private var currentGradientFactor = 0f
+        private var zoomLevel = 0f
 
         private inner class BubbleWallReceiver: BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
@@ -52,7 +52,7 @@ class BubbleWallService: WallpaperService() {
                 when (action) {
                     Intent.ACTION_USER_PRESENT -> {
                         // Restore zoom level
-                        adjustBubbleCoordinates(mZoomLevel)
+                        adjustBubbleCoordinates(zoomLevel)
                         drawBubblesFactorOfMaxSmoothly(1f)
                     }
                     Intent.ACTION_SCREEN_OFF -> {
@@ -83,19 +83,19 @@ class BubbleWallService: WallpaperService() {
             pkgIntentFilter.addDataScheme("package")
 
             if (!isPreview) {
-                registerReceiver(mReceiver, intentFilter)
-                registerReceiver(mReceiver, pkgIntentFilter)
+                registerReceiver(receiver, intentFilter)
+                registerReceiver(receiver, pkgIntentFilter)
             }
         }
 
         override fun onDestroy() {
-            if (!isPreview) unregisterReceiver(mReceiver)
+            if (!isPreview) unregisterReceiver(receiver)
         }
 
         override fun onSurfaceChanged(surfaceHolder: SurfaceHolder, format: Int, width: Int,
                                       height: Int) {
-            mSurfaceHeight = height
-            mSurfaceWidth = width
+            surfaceHeight = height
+            surfaceWidth = width
 
             regenAllBubbles()
             drawBubblesFactorOfMax(1f)
@@ -110,24 +110,24 @@ class BubbleWallService: WallpaperService() {
             }
 
             if (event.action == MotionEvent.ACTION_DOWN) {
-                mPressedBubble = getBubbleFromTouchEvent(event)
-                if (mPressedBubble != null) {
+                pressedBubble = getBubbleFromTouchEvent(event)
+                if (pressedBubble != null) {
                     drawBubbleTouch(true)
                 }
-            } else if (mPressedBubble != null) {
+            } else if (pressedBubble != null) {
                 drawBubbleTouch(false)
             }
         }
 
         override fun onZoomChanged(zoom: Float) {
-            mZoomLevel = zoom
+            zoomLevel = zoom
             adjustBubbleCoordinates(zoom)
             drawBubblesFactorOfMax((1 - zoom).coerceAtLeast(.2f))
         }
 
         private fun drawCanvasBackground(canvas: Canvas,
                                          brightness: Float = if (isNightMode) 0f else 1f,
-                                         gradientFactor: Float = mCurrentGradientFactor) {
+                                         gradientFactor: Float = currentGradientFactor) {
             // Draw grayscale color
             val r = (255 * brightness).roundToInt()
             val g = (255 * brightness).roundToInt()
@@ -135,18 +135,18 @@ class BubbleWallService: WallpaperService() {
             canvas.drawARGB(255, r, g, b)
 
             // Draw gradient
-            mCurrentGradientFactor = gradientFactor
+            currentGradientFactor = gradientFactor
             val darkColor = adjustColorAlpha(accentColor, if (isNightMode) .1f else .6f)
             val brightColor = adjustColorAlpha(accentColor, .3f)
-            val height = mSurfaceHeight - mSurfaceHeight * (gradientFactor * .75f)
+            val height = surfaceHeight - surfaceHeight * (gradientFactor * .75f)
             val paint = Paint()
-            paint.shader = LinearGradient(0f, mSurfaceHeight.toFloat(), 0f, height, darkColor,
+            paint.shader = LinearGradient(0f, surfaceHeight.toFloat(), 0f, height, darkColor,
                     brightColor, Shader.TileMode.CLAMP)
-            canvas.drawRect(0f, 0f, mSurfaceWidth.toFloat(), mSurfaceHeight.toFloat(), paint)
+            canvas.drawRect(0f, 0f, surfaceWidth.toFloat(), surfaceHeight.toFloat(), paint)
         }
 
         private fun drawBubbles(canvas: Canvas) {
-            for (bubble in mBubbles) {
+            for (bubble in bubbles) {
                 // Bubble shadow
                 val shadowX = bubble.currentX + bubble.currentRadius / 6
                 val shadowY = bubble.currentY + bubble.currentRadius / 6
@@ -156,7 +156,8 @@ class BubbleWallService: WallpaperService() {
                 canvas.drawCircle(shadowX, shadowY, bubble.currentRadius, paint)
 
                 // Bubble
-                canvas.drawCircle(bubble.currentX, bubble.currentY, bubble.currentRadius, bubble.fillPaint)
+                canvas.drawCircle(bubble.currentX, bubble.currentY, bubble.currentRadius,
+                        bubble.fillPaint)
 
                 // Bubble outline
                 canvas.drawCircle(bubble.currentX, bubble.currentY,
@@ -176,7 +177,7 @@ class BubbleWallService: WallpaperService() {
             val surfaceHolder = surfaceHolder
             val canvas = lockHwCanvasIfPossible(surfaceHolder)
             drawCanvasBackground(canvas, if (isNightMode) 0f else 1f, factor)
-            for (bubble in mBubbles) {
+            for (bubble in bubbles) {
                 bubble.currentRadius = bubble.baseRadius * factor
             }
             drawBubbles(canvas)
@@ -188,7 +189,7 @@ class BubbleWallService: WallpaperService() {
             for (x in if (isNightMode) 20 downTo 0 else 0..20) {
                 val canvas = lockHwCanvasIfPossible(surfaceHolder)
                 val brightness = x / 20f
-                drawCanvasBackground(canvas, brightness, mCurrentGradientFactor)
+                drawCanvasBackground(canvas, brightness, currentGradientFactor)
                 drawBubbles(canvas)
                 surfaceHolder.unlockCanvasAndPost(canvas)
             }
@@ -199,50 +200,39 @@ class BubbleWallService: WallpaperService() {
             for (x in 0..4) {
                 val canvas = lockHwCanvasIfPossible(surfaceHolder)
                 drawCanvasBackground(canvas)
-                mPressedBubble!!.currentRadius += if (expand) 1f else -1f
+                pressedBubble!!.currentRadius += if (expand) 1f else -1f
                 drawBubbles(canvas)
                 surfaceHolder.unlockCanvasAndPost(canvas)
             }
-            if (!expand) mPressedBubble = null
+            if (!expand) pressedBubble = null
         }
 
         fun drawBubblesFactorOfMaxSmoothly(targetFactor: Float) {
-            val targetRadii = FloatArray(mBubbles.size)
-            val ranges = FloatArray(mBubbles.size)
-            val addToRadius = FloatArray(mBubbles.size)
-            for (bubble in mBubbles) {
-                val index = mBubbles.indexOf(bubble)
-                targetRadii[index] = bubble.baseRadius * targetFactor
-                ranges[index] = targetRadii[index] - bubble.currentRadius
-                addToRadius[index] = bubble.baseRadius * .05f
-            }
-
-            val isExpansion = ranges[0] > 0
+            val bubbleZeroTargetRadius = bubbles[0].baseRadius * targetFactor
+            var bubbleZeroTotalRange = bubbleZeroTargetRadius - bubbles[0].currentRadius
+            val isExpansion = bubbleZeroTotalRange > 0
+            bubbleZeroTotalRange = abs(bubbleZeroTotalRange)
             val surfaceHolder = surfaceHolder
-            while (mBubbles[0].currentRadius != targetRadii[0]) {
+
+            while (bubbles[0].currentRadius < bubbleZeroTargetRadius) {
                 val canvas = lockHwCanvasIfPossible(surfaceHolder)
-                val firstBubbleRange = abs(targetRadii[0] - mBubbles[0].currentRadius)
+                val bubbleZeroCurrentRange = abs(bubbleZeroTargetRadius - bubbles[0].currentRadius)
+                val speedModifier = getSpeedModifier(bubbleZeroTotalRange, bubbleZeroCurrentRange)
 
                 // The gradient factor is tied to all Bubble drawing events.
                 // If target gradient factor height is above (if we're expanding) or below (if
                 // we aren't expanding) the current factor, wait to change the gradient factor
                 // so it's smooth.
-                val gradientFactor = if (isExpansion)
-                    maxOf(1 - firstBubbleRange / ranges[0], mCurrentGradientFactor)
+                var gradientFactor = 1 - bubbleZeroCurrentRange / bubbleZeroTotalRange
+                gradientFactor = if (isExpansion)
+                    gradientFactor.coerceAtLeast(currentGradientFactor)
                 else
-                    minOf(1 - firstBubbleRange / ranges[0], mCurrentGradientFactor)
+                    gradientFactor.coerceAtMost(currentGradientFactor)
                 drawCanvasBackground(canvas, if (isNightMode) 0f else 1f, gradientFactor)
 
-                for (bubble in mBubbles) {
-                    val index = mBubbles.indexOf(bubble)
-                    val currentRange = targetRadii[index] - bubble.currentRadius
-                    val speedModifier = getSpeedModifier(abs(ranges[index]), abs(currentRange))
+                for (bubble in bubbles) {
                     bubble.currentRadius +=
-                            addToRadius[index] * speedModifier * if (isExpansion) 1 else -1
-                    bubble.currentRadius = if (isExpansion)
-                        minOf(bubble.currentRadius, targetRadii[index])
-                    else
-                        maxOf(bubble.currentRadius, targetRadii[index])
+                            bubble.baseRadius * .05f * speedModifier * if (isExpansion) 1 else -1
                 }
                 drawBubbles(canvas)
                 surfaceHolder.unlockCanvasAndPost(canvas)
@@ -250,7 +240,7 @@ class BubbleWallService: WallpaperService() {
         }
 
         private fun getBubbleInBounds(x: Int, y: Int): Bubble? {
-            for (bubble in mBubbles) {
+            for (bubble in bubbles) {
                 if ((x - bubble.baseX.toDouble()).pow(2) + (y - bubble.baseY.toDouble()).pow(2) <
                         bubble.baseRadius.toDouble().pow(2)) {
                     return bubble
@@ -266,10 +256,10 @@ class BubbleWallService: WallpaperService() {
         }
 
         private fun adjustBubbleCoordinates(factor: Float) {
-            for (bubble in mBubbles) {
+            for (bubble in bubbles) {
                 // Convert Bubble coordinates into coordinate plane compatible coordinates
-                val halfWidth = mSurfaceWidth / 2
-                val halfHeight = mSurfaceHeight / 2
+                val halfWidth = surfaceWidth / 2
+                val halfHeight = surfaceHeight / 2
                 var distanceFromXInt = halfWidth - bubble.baseX.toFloat()
                 if (distanceFromXInt < halfWidth) distanceFromXInt *= -1f
                 var distanceFromYInt = halfHeight - bubble.baseY.toFloat()
@@ -281,11 +271,11 @@ class BubbleWallService: WallpaperService() {
         }
 
         private fun regenAllBubbles() {
-            mBubbles.clear()
+            bubbles.clear()
             while (true) {
                 val bubble = genRandomBubble()
                 if (bubble != null) {
-                    mBubbles.add(bubble)
+                    bubbles.add(bubble)
                 } else {
                     // If bubble is null, the max overlap retry count was
                     // exceeded, stop adding bubbles
@@ -307,8 +297,8 @@ class BubbleWallService: WallpaperService() {
              */
             while (bubbleOverlaps(x, y, radius) || radius == 0) {
                 radius = random.nextInt(minBubbleRadius, maxBubbleRadius)
-                x = random.nextInt(radius + bubblePadding,mSurfaceWidth - radius - bubblePadding)
-                y = random.nextInt(radius + bubblePadding,mSurfaceHeight - radius - bubblePadding)
+                x = random.nextInt(radius + bubblePadding,surfaceWidth - radius - bubblePadding)
+                y = random.nextInt(radius + bubblePadding,surfaceHeight - radius - bubblePadding)
                 if (++overlapCount > overlapRetryCount) {
                     return null
                 }
@@ -325,11 +315,11 @@ class BubbleWallService: WallpaperService() {
                 // Start bringing the modifier back down when we reach half the range
                 speedModifier = 2 - speedModifier
             }
-            return maxOf(speedModifier,.001f)
+            return speedModifier.coerceAtLeast(.001f)
         }
 
         private fun bubbleOverlaps(x: Int, y: Int, radius: Int): Boolean {
-            for (bubble in mBubbles) {
+            for (bubble in bubbles) {
                 val distance = sqrt((x - bubble.baseX.toDouble()).pow(2)
                         + (y - bubble.baseY.toDouble()).pow(2))
                 if (distance < radius + bubble.baseRadius + bubblePadding) {
