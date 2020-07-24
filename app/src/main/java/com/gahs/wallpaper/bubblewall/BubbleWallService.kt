@@ -119,9 +119,10 @@ class BubbleWallService: WallpaperService() {
         }
 
         override fun onZoomChanged(zoom: Float) {
-            zoomLevel = zoom
-            adjustBubbleCoordinates(zoom)
-            drawBubblesFactorOfMax((1 - zoom).coerceAtLeast(.2f))
+            val adjustedZoomLevel = zoom - (zoom * .65f)
+            zoomLevel = adjustedZoomLevel
+            adjustBubbleCoordinates(adjustedZoomLevel)
+            drawBubblesFactorOfMax(1 - adjustedZoomLevel)
         }
 
         private fun drawCanvasBackground(canvas: Canvas,
@@ -175,7 +176,7 @@ class BubbleWallService: WallpaperService() {
             surfaceHolder.unlockCanvasAndPost(canvas)
         }
 
-        fun drawUiModeTransition() {
+        private fun drawUiModeTransition() {
             val surfaceHolder = surfaceHolder
             for (x in if (isNightMode) 20 downTo 0 else 0..20) {
                 val canvas = lockHwCanvasIfPossible(surfaceHolder)
@@ -211,15 +212,17 @@ class BubbleWallService: WallpaperService() {
                 val bubbleZeroCurrentRange = abs(bubbleZeroTargetRadius - bubbles[0].currentRadius)
                 val speedModifier = getSpeedModifier(bubbleZeroTotalRange, bubbleZeroCurrentRange)
                 val addToFactor = .05f * speedModifier * if (isExpansion) 1 else -1
+                newFactor = currentFactor + addToFactor
 
                 // Background gradient
-                newFactor = currentFactor + addToFactor
                 drawCanvasBackground(canvas, if (isNightMode) 0f else 1f, newFactor)
 
+                // Bubble size
                 for (bubble in bubbles) {
                     bubble.currentRadius +=
                             bubble.baseRadius * addToFactor
                 }
+
                 drawBubbles(canvas)
                 surfaceHolder.unlockCanvasAndPost(canvas)
             }
