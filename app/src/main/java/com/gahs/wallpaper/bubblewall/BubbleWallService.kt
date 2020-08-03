@@ -50,7 +50,7 @@ class BubbleWallService: WallpaperService() {
                     }
                     Intent.ACTION_SCREEN_OFF -> {
                         adjustBubbleCoordinates(0f)
-                        drawBubblesFactorOfMax(1 / 3f)
+                        drawBubblesFactorOfMax(.3f)
                     }
                     Intent.ACTION_CONFIGURATION_CHANGED -> {
                         drawUiModeTransition()
@@ -140,7 +140,7 @@ class BubbleWallService: WallpaperService() {
         private fun drawBubbles(canvas: Canvas) {
             for (bubble in bubbles) {
                 // Bubble shadow
-                canvas.drawCircle(bubble.shadowX, bubble.shadowY, bubble.currentRadius,
+                canvas.drawCircle(bubble.shadowX, bubble.shadowY, bubble.shadowRadius,
                         bubble.shadowPaint)
 
                 // Bubble
@@ -344,15 +344,18 @@ class BubbleWallService: WallpaperService() {
             }
 
         val shadowX: Float
-            get() = currentX + currentRadius / 6
+            get() = currentX + currentRadius / 5
 
         val shadowY: Float
-            get() = currentY + currentRadius / 6
+            get() = currentY + currentRadius / 5
+
+        val shadowRadius: Float
+            get() = currentRadius * .9f
 
         val shadowPaint: Paint
             get() {
                 val paint = Paint()
-                paint.shader = RadialGradient(shadowX, shadowY, currentRadius, Color.BLACK,
+                paint.shader = RadialGradient(shadowX, shadowY, shadowRadius, Color.BLACK,
                         Color.TRANSPARENT, Shader.TileMode.CLAMP)
                 return paint
             }
