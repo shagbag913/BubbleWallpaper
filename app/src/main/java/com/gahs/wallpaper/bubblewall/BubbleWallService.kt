@@ -40,19 +40,15 @@ class BubbleWallService: WallpaperService() {
         private var surfaceHeight = 0
         private var surfaceWidth = 0
         private var currentFactor = 0f
-        private var zoomLevel = 0f
 
         private inner class BubbleWallReceiver: BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 val action = intent.action ?: return
                 when (action) {
                     Intent.ACTION_USER_PRESENT -> {
-                        // Restore zoom level
-                        adjustBubbleCoordinates(zoomLevel)
                         drawBubblesFactorOfMaxSmoothly(1f)
                     }
                     Intent.ACTION_SCREEN_OFF -> {
-                        // Reset zoom level on screen off
                         adjustBubbleCoordinates(0f)
                         drawBubblesFactorOfMax(1 / 3f)
                     }
@@ -117,7 +113,6 @@ class BubbleWallService: WallpaperService() {
 
         override fun onZoomChanged(zoom: Float) {
             val adjustedZoomLevel = zoom - (zoom * .65f)
-            zoomLevel = adjustedZoomLevel
             adjustBubbleCoordinates(adjustedZoomLevel)
             drawBubblesFactorOfMax(1 - adjustedZoomLevel)
         }
