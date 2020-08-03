@@ -40,22 +40,27 @@ class BubbleWallService: WallpaperService() {
         private var surfaceHeight = 0
         private var surfaceWidth = 0
         private var currentFactor = 0f
+        private var userPresent = false
 
         private inner class BubbleWallReceiver: BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 val action = intent.action ?: return
                 when (action) {
                     Intent.ACTION_USER_PRESENT -> {
+                        userPresent = true
                         drawBubblesFactorOfMaxSmoothly(1f)
                     }
                     Intent.ACTION_SCREEN_OFF -> {
                         adjustBubbleCoordinates(0f)
                         drawBubblesFactorOfMax(.3f)
+                        userPresent = false
                     }
                     Intent.ACTION_SCREEN_ON -> {
-                        // Make sure Bubbles were reset
-                        adjustBubbleCoordinates(0f)
-                        drawBubblesFactorOfMax(.3f)
+                        // Make sure Bubbles are reset
+                        if (!userPresent) {
+                            adjustBubbleCoordinates(0f)
+                            drawBubblesFactorOfMax(.3f)
+                        }
                     }
                     Intent.ACTION_CONFIGURATION_CHANGED -> {
                         drawUiModeTransition()
@@ -196,7 +201,9 @@ class BubbleWallService: WallpaperService() {
                 drawBubbles(canvas)
                 surfaceHolder.unlockCanvasAndPost(canvas)
             }
-            if (!expand) pressedBubble = null
+            if (!expand) {
+                pressedBubble = null
+            }
         }
 
         fun drawBubblesFactorOfMaxSmoothly(targetFactor: Float) {
