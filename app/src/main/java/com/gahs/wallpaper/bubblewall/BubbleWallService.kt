@@ -41,6 +41,7 @@ class BubbleWallService: WallpaperService() {
         private var surfaceWidth = 0
         private var currentFactor = 0f
         private var userPresent = false
+        private var timeAtUnlockAnimation = 0L
 
         private inner class BubbleWallReceiver: BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
@@ -49,6 +50,7 @@ class BubbleWallService: WallpaperService() {
                     Intent.ACTION_USER_PRESENT -> {
                         userPresent = true
                         drawBubblesFactorOfMaxSmoothly(1f)
+                        timeAtUnlockAnimation = System.currentTimeMillis()
                     }
                     Intent.ACTION_SCREEN_OFF -> {
                         adjustBubbleCoordinates(0f)
@@ -125,9 +127,12 @@ class BubbleWallService: WallpaperService() {
         }
 
         override fun onZoomChanged(zoom: Float) {
-            val adjustedZoomLevel = zoom - (zoom * .65f)
-            adjustBubbleCoordinates(adjustedZoomLevel)
-            drawBubblesFactorOfMax(1 - adjustedZoomLevel)
+            // Skip zoom changes until 500ms after unlock animation is completed
+            if (System.currentTimeMillis() - timeAtUnlockAnimation > 500) {
+                val adjustedZoomLevel = zoom - (zoom * .65f)
+                adjustBubbleCoordinates(adjustedZoomLevel)
+                drawBubblesFactorOfMax(1 - adjustedZoomLevel)
+            }
         }
 
         private fun drawCanvasBackground(canvas: Canvas,
