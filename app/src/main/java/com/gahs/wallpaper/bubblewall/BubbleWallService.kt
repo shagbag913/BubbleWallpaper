@@ -52,6 +52,11 @@ class BubbleWallService: WallpaperService() {
                         adjustBubbleCoordinates(0f)
                         drawBubblesFactorOfMax(.3f)
                     }
+                    Intent.ACTION_SCREEN_ON -> {
+                        // Make sure Bubbles were reset
+                        adjustBubbleCoordinates(0f)
+                        drawBubblesFactorOfMax(.3f)
+                    }
                     Intent.ACTION_CONFIGURATION_CHANGED -> {
                         drawUiModeTransition()
                     }
@@ -67,6 +72,7 @@ class BubbleWallService: WallpaperService() {
 
             val intentFilter = IntentFilter()
             intentFilter.addAction(Intent.ACTION_SCREEN_OFF)
+            intentFilter.addAction(Intent.ACTION_SCREEN_ON)
             intentFilter.addAction(Intent.ACTION_USER_PRESENT)
             intentFilter.addAction(Intent.ACTION_CONFIGURATION_CHANGED)
 
@@ -81,7 +87,9 @@ class BubbleWallService: WallpaperService() {
         }
 
         override fun onDestroy() {
-            if (!isPreview) unregisterReceiver(receiver)
+            if (!isPreview) {
+                unregisterReceiver(receiver)
+            }
         }
 
         override fun onSurfaceChanged(surfaceHolder: SurfaceHolder, format: Int, width: Int,
