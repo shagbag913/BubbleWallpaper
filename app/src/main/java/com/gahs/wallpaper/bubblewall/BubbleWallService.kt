@@ -19,10 +19,7 @@ import android.view.SurfaceHolder
 
 import androidx.annotation.ColorInt
 
-import kotlin.math.abs
-import kotlin.math.pow
-import kotlin.math.roundToInt
-import kotlin.math.sqrt
+import kotlin.math.*
 import kotlin.random.Random
 
 class BubbleWallService: WallpaperService() {
@@ -328,15 +325,6 @@ class BubbleWallService: WallpaperService() {
                 theme.resolveAttribute(android.R.attr.colorAccent, outValue, true)
                 return outValue.data
             }
-
-        @ColorInt
-        private fun adjustColorAlpha(color: Int, factor: Float): Int {
-            val alpha = (Color.alpha(color) * factor).roundToInt()
-            val red = Color.red(color)
-            val green = Color.green(color)
-            val blue = Color.blue(color)
-            return Color.argb(alpha, red, green, blue)
-        }
     }
 
     private inner class Bubble constructor(
@@ -349,12 +337,16 @@ class BubbleWallService: WallpaperService() {
 
         private var color = randomColorFromResource
 
-        val fillPaint: Paint by lazy {
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-            paint.color = color
-            paint.style = Paint.Style.FILL
-            paint
-        }
+        val fillPaint: Paint
+            get() {
+                val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+                val coordOffset = currentRadius * .5f
+                // Use brighter color in light theme to minimize contrast
+                val color2 = adjustColorBrightness(color, if (isNightMode) .5f else .75f)
+                paint.shader = RadialGradient(currentX - coordOffset, currentY - coordOffset,
+                        currentRadius * 2f, color, color2, Shader.TileMode.REPEAT)
+                return paint
+            }
 
         val shadowX: Float
             get() = currentX + currentRadius / 6
@@ -388,5 +380,23 @@ class BubbleWallService: WallpaperService() {
             return surfaceHolder.lockCanvas()
         }
         return surfaceHolder.lockHardwareCanvas()
+    }
+
+    @ColorInt
+    private fun adjustColorAlpha(color: Int, factor: Float): Int {
+        val alpha = (Color.alpha(color) * factor).roundToInt()
+        val red = Color.red(color)
+        val green = Color.green(color)
+        val blue = Color.blue(color)
+        return Color.argb(alpha, red, green, blue)
+    }
+
+    @ColorInt
+    private fun adjustColorBrightness(color: Int, factor: Float): Int {
+        val alpha = Color.alpha(color)
+        val red = (Color.red(color) * factor).toInt()
+        val green = (Color.green(color) * factor).toInt()
+        val blue = (Color.blue(color) * factor).toInt()
+        return Color.argb(alpha, red, green, blue)
     }
 }
