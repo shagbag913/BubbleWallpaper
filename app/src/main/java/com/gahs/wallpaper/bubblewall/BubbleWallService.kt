@@ -223,7 +223,7 @@ class BubbleWallService: WallpaperService() {
                 val canvas = lockHwCanvasIfPossible(surfaceHolder)
                 val bubbleZeroCurrentRange = abs(bubbleZeroTargetRadius - bubbles[0].currentRadius)
                 val speedModifier = getSpeedModifier(bubbleZeroTotalRange, bubbleZeroCurrentRange)
-                val addToFactor = .05f * speedModifier * if (isExpansion) 1 else -1
+                val addToFactor = .075f * speedModifier * if (isExpansion) 1 else -1
                 newFactor = currentFactor + addToFactor
 
                 // Background gradient
