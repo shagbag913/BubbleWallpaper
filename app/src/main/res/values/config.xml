@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Minimum amount of space between bubbles/edge of screen -->
+    <integer name="bubble_padding">50</integer>
+
+    <!-- Maximum allowed bubble radius in pixels -->
+    <integer name="bubble_max_radius">250</integer>
+
+    <!-- Minimum allowed bubble radius in pixels -->
+    <integer name="bubble_min_radius">20</integer>
+
+    <!-- Maximum number of times to retry creating random bubble coordinates
+         that don't overlap other bubbles. In theory, the higher this number is,
+         the higher the density of bubbles is. -->
+    <integer name="bubble_overlap_retry_count">50</integer>
+</resources>

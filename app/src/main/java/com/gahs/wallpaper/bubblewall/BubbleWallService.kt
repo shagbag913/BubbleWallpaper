@@ -28,12 +28,6 @@ class BubbleWallService: WallpaperService() {
     }
 
     private inner class BubbleWallEngine: Engine() {
-        // Configurable
-        private val bubblePadding = 50
-        private val maxBubbleRadius = 250
-        private val minBubbleRadius = 20
-        private val overlapRetryCount = 50
-
         private val receiver: BroadcastReceiver = BubbleWallReceiver()
         private val bubbles = ArrayList<Bubble>()
         private var pressedBubble: Bubble? = null
@@ -42,6 +36,11 @@ class BubbleWallService: WallpaperService() {
         private var currentFactor = 0f
         private var userPresent = false
         private var timeAtUnlockAnimation = 0L
+
+        private var minRadius = resources.getInteger(R.integer.bubble_min_radius)
+        private var maxRadius = resources.getInteger(R.integer.bubble_max_radius)
+        private var bubblePadding = resources.getInteger(R.integer.bubble_padding)
+        private var overlapRetryCount = resources.getInteger(R.integer.bubble_overlap_retry_count)
 
         private inner class BubbleWallReceiver: BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
@@ -261,8 +260,10 @@ class BubbleWallService: WallpaperService() {
                 // Convert Bubble coordinates into coordinate plane compatible coordinates
                 val halfWidth = surfaceWidth / 2
                 val halfHeight = surfaceHeight / 2
+
                 var distanceFromXInt = halfWidth - bubble.baseX.toFloat()
                 if (distanceFromXInt < halfWidth) distanceFromXInt *= -1f
+
                 var distanceFromYInt = halfHeight - bubble.baseY.toFloat()
                 if (distanceFromYInt < halfHeight) distanceFromYInt *= -1f
 
@@ -286,7 +287,6 @@ class BubbleWallService: WallpaperService() {
         }
 
         private fun genRandomBubble(): Bubble? {
-            val random = Random
             var radius = 0
             var x = 0
             var y = 0
@@ -297,9 +297,9 @@ class BubbleWallService: WallpaperService() {
              *  B. Exceed the retry count, in which case we return null
              */
             while (bubbleOverlaps(x, y, radius) || radius == 0) {
-                radius = random.nextInt(minBubbleRadius, maxBubbleRadius)
-                x = random.nextInt(radius + bubblePadding,surfaceWidth - radius - bubblePadding)
-                y = random.nextInt(radius + bubblePadding,surfaceHeight - radius - bubblePadding)
+                radius = Random.nextInt(minRadius, maxRadius)
+                x = Random.nextInt(radius + bubblePadding,surfaceWidth - radius - bubblePadding)
+                y = Random.nextInt(radius + bubblePadding,surfaceHeight - radius - bubblePadding)
                 if (++overlapCount > overlapRetryCount) {
                     return null
                 }
@@ -346,22 +346,10 @@ class BubbleWallService: WallpaperService() {
             var baseX: Int,
             var baseY: Int,
             var baseRadius: Int) {
+
         var currentX = baseX.toFloat()
         var currentY = baseY.toFloat()
         var currentRadius = baseRadius.toFloat()
-
-        private var color = randomColorFromResource
-
-        val fillPaint: Paint
-            get() {
-                val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-                val coordOffset = currentRadius * .5f
-                // Use brighter color in light theme to minimize contrast
-                val color2 = adjustColorBrightness(color, if (isNightMode) .5f else .75f)
-                paint.shader = RadialGradient(currentX - coordOffset, currentY - coordOffset,
-                        currentRadius * 2f, color, color2, Shader.TileMode.REPEAT)
-                return paint
-            }
 
         val shadowX: Float
             get() = currentX + currentRadius / 5
@@ -371,6 +359,19 @@ class BubbleWallService: WallpaperService() {
 
         val shadowRadius: Float
             get() = currentRadius * .9f
+
+        val baseColor = randomColorFromResource
+
+        val fillPaint: Paint
+            get() {
+                val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+                val coordOffset = currentRadius * .5f
+                // Use brighter color in light theme to minimize contrast
+                val color = adjustColorBrightness(baseColor, if (isNightMode) .5f else .75f)
+                paint.shader = RadialGradient(currentX - coordOffset, currentY - coordOffset,
+                        currentRadius * 2f, baseColor, color, Shader.TileMode.REPEAT)
+                return paint
+            }
 
         val shadowPaint: Paint
             get() {
@@ -383,9 +384,8 @@ class BubbleWallService: WallpaperService() {
 
     private val randomColorFromResource: Int
         get() {
-            val random = Random
             val resourceColorArray = resources.getStringArray(R.array.wallpaper_bubble_colors)
-            return Color.parseColor(resourceColorArray[random.nextInt(resourceColorArray.size)])
+            return Color.parseColor(resourceColorArray[Random.nextInt(resourceColorArray.size)])
         }
 
     private val isNightMode: Boolean
