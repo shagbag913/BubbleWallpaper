@@ -11,7 +11,6 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.RadialGradient
 import android.graphics.Shader
-import android.os.Build
 import android.service.wallpaper.WallpaperService
 import android.util.TypedValue
 import android.view.MotionEvent
@@ -328,14 +327,9 @@ class BubbleWallService: WallpaperService() {
             return false
         }
 
-        // Use holo blue as accent when on Android < Lollipop
         @get:ColorInt
         private val accentColor: Int
             get() {
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-                    // Use holo blue as accent when on Android < Lollipop
-                    return Color.parseColor("#ff33b5e5")
-                }
                 val outValue = TypedValue()
                 theme.resolveAttribute(android.R.attr.colorAccent, outValue, true)
                 return outValue.data
@@ -394,9 +388,6 @@ class BubbleWallService: WallpaperService() {
 
 
     private fun lockHwCanvasIfPossible(surfaceHolder: SurfaceHolder): Canvas {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            return surfaceHolder.lockCanvas()
-        }
         return surfaceHolder.lockHardwareCanvas()
     }
 
