@@ -2,4 +2,5 @@
 <wallpaper xmlns:android="http://schemas.android.com/apk/res/android"
     android:author="@string/wallpaper_author"
     android:thumbnail="@drawable/preview"
+    android:settingsSliceUri="content://com.gahs.wallpaper.bubblewall/bubbles"
     android:showMetadataInPreview="true" />

@@ -1,5 +1,6 @@
 package com.gahs.wallpaper.bubblewall
 
+import android.app.WallpaperColors
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -11,12 +12,13 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.RadialGradient
 import android.graphics.Shader
+import android.net.Uri
 import android.service.wallpaper.WallpaperService
-import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.SurfaceHolder
 
 import androidx.annotation.ColorInt
+import androidx.core.content.ContextCompat
 
 import kotlin.math.*
 import kotlin.random.Random
@@ -26,6 +28,10 @@ class BubbleWallService: WallpaperService() {
         return BubbleWallEngine()
     }
 
+    companion object {
+        var selectedPreviewTheme = 0
+    }
+
     private inner class BubbleWallEngine: Engine() {
         private val receiver: BroadcastReceiver = BubbleWallReceiver()
         private val bubbles = ArrayList<Bubble>()
@@ -33,6 +39,9 @@ class BubbleWallService: WallpaperService() {
         private var surfaceHeight = 0
         private var surfaceWidth = 0
         private var currentFactor = 0f
+        private var baseColor = 0
+        private var themeChangePending = false
+        private var protectedContext = applicationContext.createDeviceProtectedStorageContext()
 
         private var minRadius = resources.getInteger(R.integer.bubble_min_radius)
         private var maxRadius = resources.getInteger(R.integer.bubble_max_radius)
@@ -43,38 +52,68 @@ class BubbleWallService: WallpaperService() {
             override fun onReceive(context: Context, intent: Intent) {
                 val action = intent.action ?: return
                 when (action) {
-                    Intent.ACTION_CONFIGURATION_CHANGED -> {
-                        drawUiModeTransition()
+                    @Suppress("DEPRECATION")
+                    Intent.ACTION_WALLPAPER_CHANGED -> {
+                        themeChangePending = true
                     }
-                    Intent.ACTION_PACKAGE_CHANGED -> {
-                        drawBubblesCurrentRadius()
+                    ACTION -> {
+                        if (isPreview) {
+                            val previewTheme = intent.getIntExtra(EXTRA, 0)
+                            savePreferenceValue("previewTheme", previewTheme)
+                            updateTheme(previewTheme)
+                            selectedPreviewTheme = previewTheme
+                            val sliceUri = Uri.parse("content://com.gahs.wallpaper.bubblewall")
+                            context!!.contentResolver.notifyChange(sliceUri, null)
+                        }
                     }
                 }
             }
+        }
+
+        val isFirstRun: Boolean
+            get() = getPreferenceValue("theme", 50) == 50
+
+        fun getPreferenceValue(pref: String, defValue: Int = 0): Int {
+            val sharedPrefs = protectedContext.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+            return sharedPrefs.getInt(pref, defValue)
+        }
+
+        fun savePreferenceValue(pref: String, value: Int) {
+            val sharedPrefs = protectedContext.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+            sharedPrefs.edit().putInt(pref, value).apply()
+        }
+
+        fun updateTheme(theme: Int) {
+            baseColor = getThemeColor(theme)
+            notifyColorsChanged()
+            changeBubbleColor(baseColor)
+            drawBubblesCurrentRadius()
         }
 
         override fun onCreate(surfaceHolder: SurfaceHolder) {
             super.onCreate(surfaceHolder)
 
             val intentFilter = IntentFilter()
-            intentFilter.addAction(Intent.ACTION_PACKAGE_CHANGED)
-            intentFilter.addDataScheme("package")
+            intentFilter.addAction(ACTION)
+            @Suppress("DEPRECATION")
+            intentFilter.addAction(Intent.ACTION_WALLPAPER_CHANGED)
 
-            if (!isPreview) {
-                registerReceiver(receiver, intentFilter)
-            }
+            registerReceiver(receiver, intentFilter)
+
+            selectedPreviewTheme = getPreferenceValue("theme")
+            themeChangePending = isFirstRun
         }
 
         override fun onDestroy() {
-            if (!isPreview) {
-                unregisterReceiver(receiver)
-            }
+            unregisterReceiver(receiver)
         }
 
         override fun onSurfaceChanged(surfaceHolder: SurfaceHolder, format: Int, width: Int,
                                       height: Int) {
             surfaceHeight = height
             surfaceWidth = width
+
+            baseColor = getThemeColor(getPreferenceValue("theme"))
 
             regenAllBubbles()
             drawBubblesFactorOfMax(1f)
@@ -98,10 +137,25 @@ class BubbleWallService: WallpaperService() {
             }
         }
 
+        override fun onVisibilityChanged(visible: Boolean) {
+            if (!isPreview && themeChangePending && visible) {
+                // Preview mode ended, save and apply chosen theme
+                val previewTheme = getPreferenceValue("previewTheme")
+                savePreferenceValue("theme", previewTheme)
+                updateTheme(previewTheme)
+                themeChangePending = false
+            }
+        }
+
         override fun onZoomChanged(zoom: Float) {
             val adjustedZoomLevel = zoom - (zoom * .65f)
             adjustBubbleCoordinates(adjustedZoomLevel)
             drawBubblesFactorOfMax(1 - adjustedZoomLevel)
+        }
+
+        override fun onComputeColors(): WallpaperColors? {
+            val color = Color.valueOf(baseColor)
+            return WallpaperColors(color, color, color)
         }
 
         private fun drawCanvasBackground(canvas: Canvas,
@@ -115,8 +169,8 @@ class BubbleWallService: WallpaperService() {
 
             // Draw gradient
             currentFactor = factor
-            val darkColor = adjustColorAlpha(accentColor, if (isNightMode) .1f else .6f)
-            val brightColor = adjustColorAlpha(accentColor, .3f)
+            val darkColor = adjustColorAlpha(baseColor, if (isNightMode) .1f else .6f)
+            val brightColor = adjustColorAlpha(baseColor, .3f)
             val height = surfaceHeight - surfaceHeight * (factor * .75f)
             val paint = Paint()
             paint.shader = LinearGradient(0f, surfaceHeight.toFloat(), 0f, height, darkColor,
@@ -245,7 +299,7 @@ class BubbleWallService: WallpaperService() {
                     return null
                 }
             }
-            return Bubble(x, y, radius)
+            return Bubble(x, y, radius, baseColor)
         }
 
         private fun bubbleOverlaps(x: Int, y: Int, radius: Int): Boolean {
@@ -259,23 +313,29 @@ class BubbleWallService: WallpaperService() {
             return false
         }
 
-        @get:ColorInt
-        private val accentColor: Int
-            get() {
-                val outValue = TypedValue()
-                theme.resolveAttribute(android.R.attr.colorAccent, outValue, true)
-                return outValue.data
+        fun getThemeColor(theme: Int): Int {
+            val colorArray = baseContext!!.resources.obtainTypedArray(R.array.theme_colors)
+            val themeColor = colorArray.getResourceId(theme, 0)
+            return ContextCompat.getColor(baseContext!!, themeColor)
+        }
+
+        fun changeBubbleColor(color: Int) {
+            for (bubble in bubbles) {
+                bubble.baseColor = color
             }
+        }
     }
 
     private inner class Bubble constructor(
             var baseX: Int,
             var baseY: Int,
-            var baseRadius: Int) {
+            var baseRadius: Int,
+            var color: Int) {
 
         var currentX = baseX.toFloat()
         var currentY = baseY.toFloat()
         var currentRadius = baseRadius.toFloat()
+        var baseColor = color
 
         val shadowX: Float
             get() = currentX + currentRadius / 5
@@ -285,8 +345,6 @@ class BubbleWallService: WallpaperService() {
 
         val shadowRadius: Float
             get() = currentRadius * .9f
-
-        val baseColor = randomColorFromResource
 
         val fillPaint: Paint
             get() {
@@ -307,12 +365,6 @@ class BubbleWallService: WallpaperService() {
                 return paint
             }
     }
-
-    private val randomColorFromResource: Int
-        get() {
-            val resourceColorArray = resources.getStringArray(R.array.wallpaper_bubble_colors)
-            return Color.parseColor(resourceColorArray[Random.nextInt(resourceColorArray.size)])
-        }
 
     private val isNightMode: Boolean
         get() = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==

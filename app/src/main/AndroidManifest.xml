@@ -27,5 +27,16 @@
                 android:resource="@xml/wallpaper">
             </meta-data>
         </service>
+        
+        <provider
+            android:authorities="com.gahs.wallpaper.bubblewall"
+            android:name=".BubbleSettingsProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.app.slice.category.SLICE" />
+            </intent-filter>
+        </provider>
+
     </application>
 </manifest>

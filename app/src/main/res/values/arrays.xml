@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+    <array name="button_drawables_checked">
+        <item>@drawable/button_checked_a</item>
+        <item>@drawable/button_checked_b</item>
+        <item>@drawable/button_checked_c</item>
+        <item>@drawable/button_checked_d</item>
+    </array>
+    <array name="button_drawables_unchecked">
+        <item>@drawable/button_unchecked_a</item>
+        <item>@drawable/button_unchecked_b</item>
+        <item>@drawable/button_unchecked_c</item>
+        <item>@drawable/button_unchecked_d</item>
+    </array>
+    <array name="theme_colors">
+        <item>@color/background_color_a</item>
+        <item>@color/background_color_b</item>
+        <item>@color/background_color_c</item>
+        <item>@color/background_color_d</item>
+    </array>
+</resources>

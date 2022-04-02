@@ -2,38 +2,7 @@
     <string name="app_name">Bubble Wall</string>
     <string name="wallpaper_name">Bubbles</string>
     <string name="wallpaper_author">shagbag913</string>
-    <string-array name="wallpaper_bubble_colors">
-        <item>#f03535</item>
-        <item>#ff4545</item>
-
-        <item>#0562ff</item>
-        <item>#1c70ff</item>
-
-        <item>#21ff5c</item>
-        <item>#4fff7e</item>
-
-        <item>#fffc33</item>
-        <item>#fffd6e</item>
-
-        <item>#1ff0ff</item>
-        <item>#4ff3ff</item>
-
-        <item>#f04aff</item>
-        <item>#f25cff</item>
-
-        <item>#c229ff</item>
-        <item>#c840ff</item>
-
-        <item>#ff298d</item>
-        <item>#ff4fa1</item>
-
-        <item>#9fff29</item>
-        <item>#b0ff4f</item>
-
-        <item>#30ffb6</item>
-        <item>#4fffc1</item>
-
-        <item>#ffc524</item>
-        <item>#ffce45</item>
-    </string-array>
+    <string name="wallpaper_color_theme_title">Theme</string>
+    <string name="uiradio_checked">M12,12m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0</string>
+    <string name="uiradio_unchecked">M12,12m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0</string>
 </resources>

@@ -27,5 +27,6 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    implementation 'androidx.appcompat:appcompat:1.4.1'
+    implementation 'com.android.support:slices-core:28.0.0'
+    implementation 'androidx.slice:slice-builders-ktx:1.0.0-alpha6'
 }
