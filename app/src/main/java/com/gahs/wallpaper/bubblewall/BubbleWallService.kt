@@ -67,7 +67,7 @@ class BubbleWallService: WallpaperService() {
                             updateTheme(previewTheme)
                             selectedPreviewTheme = previewTheme
                             val sliceUri = Uri.parse("content://com.gahs.wallpaper.bubblewall")
-                            context!!.contentResolver.notifyChange(sliceUri, null)
+                            context.contentResolver.notifyChange(sliceUri, null)
                         }
                     }
                 }
@@ -97,7 +97,6 @@ class BubbleWallService: WallpaperService() {
         fun updateTheme(theme: Int) {
             baseColor = getThemeColor(theme)
             notifyColorsChanged()
-            changeBubbleColor(baseColor)
             drawBubblesCurrentRadius()
         }
 
@@ -163,7 +162,7 @@ class BubbleWallService: WallpaperService() {
             drawBubblesFactorOfMax(1 - adjustedZoomLevel)
         }
 
-        override fun onComputeColors(): WallpaperColors? {
+        override fun onComputeColors(): WallpaperColors {
             val color = Color.valueOf(baseColor)
             return WallpaperColors(color, color, color)
         }
@@ -309,7 +308,7 @@ class BubbleWallService: WallpaperService() {
                     return null
                 }
             }
-            return Bubble(x, y, radius, baseColor)
+            return Bubble(x, y, radius)
         }
 
         private fun bubbleOverlaps(x: Int, y: Int, radius: Int): Boolean {
@@ -324,56 +323,49 @@ class BubbleWallService: WallpaperService() {
         }
 
         fun getThemeColor(theme: Int): Int {
-            val colorArray = baseContext!!.resources.obtainTypedArray(R.array.theme_colors)
+            val colorArray = applicationContext.resources.obtainTypedArray(R.array.theme_colors)
             val themeColor = colorArray.getResourceId(theme, 0)
-            return ContextCompat.getColor(baseContext!!, themeColor)
+            colorArray.recycle()
+            return ContextCompat.getColor(applicationContext, themeColor)
         }
 
-        fun changeBubbleColor(color: Int) {
-            for (bubble in bubbles) {
-                bubble.baseColor = color
-            }
+        private inner class Bubble constructor(
+                var baseX: Int,
+                var baseY: Int,
+                var baseRadius: Int) {
+
+            var currentX = baseX.toFloat()
+            var currentY = baseY.toFloat()
+            var currentRadius = baseRadius.toFloat()
+
+            val shadowX: Float
+                get() = currentX + currentRadius / 5
+
+            val shadowY: Float
+                get() = currentY + currentRadius / 5
+
+            val shadowRadius: Float
+                get() = currentRadius * .9f
+
+            val fillPaint: Paint
+                get() {
+                    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+                    val coordOffset = currentRadius * .5f
+                    // Use brighter color in light theme to minimize contrast
+                    val color = adjustColorBrightness(baseColor, if (isNightMode) .5f else .75f)
+                    paint.shader = RadialGradient(currentX - coordOffset, currentY - coordOffset,
+                            currentRadius * 2f, baseColor, color, Shader.TileMode.REPEAT)
+                    return paint
+                }
+
+            val shadowPaint: Paint
+                get() {
+                    val paint = Paint()
+                    paint.shader = RadialGradient(shadowX, shadowY, shadowRadius, Color.BLACK,
+                            Color.TRANSPARENT, Shader.TileMode.CLAMP)
+                    return paint
+                }
         }
-    }
-
-    private inner class Bubble constructor(
-            var baseX: Int,
-            var baseY: Int,
-            var baseRadius: Int,
-            var color: Int) {
-
-        var currentX = baseX.toFloat()
-        var currentY = baseY.toFloat()
-        var currentRadius = baseRadius.toFloat()
-        var baseColor = color
-
-        val shadowX: Float
-            get() = currentX + currentRadius / 5
-
-        val shadowY: Float
-            get() = currentY + currentRadius / 5
-
-        val shadowRadius: Float
-            get() = currentRadius * .9f
-
-        val fillPaint: Paint
-            get() {
-                val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-                val coordOffset = currentRadius * .5f
-                // Use brighter color in light theme to minimize contrast
-                val color = adjustColorBrightness(baseColor, if (isNightMode) .5f else .75f)
-                paint.shader = RadialGradient(currentX - coordOffset, currentY - coordOffset,
-                        currentRadius * 2f, baseColor, color, Shader.TileMode.REPEAT)
-                return paint
-            }
-
-        val shadowPaint: Paint
-            get() {
-                val paint = Paint()
-                paint.shader = RadialGradient(shadowX, shadowY, shadowRadius, Color.BLACK,
-                        Color.TRANSPARENT, Shader.TileMode.CLAMP)
-                return paint
-            }
     }
 
     private val isNightMode: Boolean
