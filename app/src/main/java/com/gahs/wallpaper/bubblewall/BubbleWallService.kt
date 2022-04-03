@@ -1,6 +1,7 @@
 package com.gahs.wallpaper.bubblewall
 
 import android.app.WallpaperColors
+import android.app.WallpaperManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -60,6 +61,9 @@ class BubbleWallService: WallpaperService() {
                         if (isPreview) {
                             val previewTheme = intent.getIntExtra(EXTRA, 0)
                             savePreferenceValue("previewTheme", previewTheme)
+                            if (isFirstRun) {
+                                savePreferenceValue("theme", previewTheme)
+                            }
                             updateTheme(previewTheme)
                             selectedPreviewTheme = previewTheme
                             val sliceUri = Uri.parse("content://com.gahs.wallpaper.bubblewall")
@@ -71,7 +75,14 @@ class BubbleWallService: WallpaperService() {
         }
 
         val isFirstRun: Boolean
-            get() = getPreferenceValue("theme", 50) == 50
+            get() {
+                val packageName = applicationContext.packageName
+                val wallpaperManager = WallpaperManager.getInstance(applicationContext)
+                if (wallpaperManager.wallpaperInfo != null) {
+                    return wallpaperManager.wallpaperInfo.packageName != packageName
+                }
+                return true
+            }
 
         fun getPreferenceValue(pref: String, defValue: Int = 0): Int {
             val sharedPrefs = protectedContext.getSharedPreferences("prefs", Context.MODE_PRIVATE)
@@ -101,7 +112,6 @@ class BubbleWallService: WallpaperService() {
             registerReceiver(receiver, intentFilter)
 
             selectedPreviewTheme = getPreferenceValue("theme")
-            themeChangePending = isFirstRun
         }
 
         override fun onDestroy() {
